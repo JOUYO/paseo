@@ -70,12 +70,22 @@ const ROW_STYLE = [settingsStyles.row, settingsStyles.rowBorder];
 <View style={[settingsStyles.row, settingsStyles.rowBorder]} />;
 ```
 
-Paseo starts with adaptive themes, then applies the persisted theme after async settings load. A
-module-level read can therefore materialize the light style before a persisted dark theme is
-active. If the view mounts after that theme change, React Native receives the stale light object;
-Unistyles registers the node for future changes but does not retroactively replace its initial
-props. Settings dividers once rendered light `#e4e4e7` inside a dark `#252B2A` card for exactly
-this reason.
+`initialTheme` and `adaptiveThemes` are mutually exclusive. On configure, web reads
+`@paseo:app-settings` from `localStorage` via `resolveInitialUnistylesSettings()` and passes
+either `{ initialTheme }` (named theme) or `{ adaptiveThemes: true }` (`auto` / missing).
+Do not configure with `adaptiveThemes: true` and then `setTheme` afterward — that is the FOUC
+path. `public/index.html` also injects a shell background style before the bundle loads.
+The settings query is sync-seeded from `localStorage` in `data/query-client.ts` so React does
+not briefly apply DEFAULT `theme: "auto"`. Native still waits for AsyncStorage and gates the
+tree in `ProvidersWrapper` until settings resolve, then `applyThemeSetting` runs in
+`useLayoutEffect`.
+
+Even with the web boot, avoid module-level style materialization: a module-level read can still
+capture the wrong theme if that module evaluates before `unistyles.ts` finishes booting, or on
+native before settings load. If the view mounts after a later theme change, React Native receives
+the stale object; Unistyles registers the node for future changes but does not retroactively
+replace its initial props. Settings dividers once rendered light `#e4e4e7` inside a dark
+`#252B2A` card for exactly this reason.
 
 Render-time array syntax is intentional and exempt from the app's JSX array-allocation lint rule.
 Keep the entries separate so each retains its Unistyles metadata. If composition is needed outside

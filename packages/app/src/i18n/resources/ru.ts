@@ -1669,6 +1669,26 @@ export const ru: TranslationResources = {
           queue: "Очередь",
         },
       },
+      sendButtonVisibility: {
+        label: "Кнопка отправки",
+        descriptions: {
+          always:
+            "Всегда показывать кнопку отправки. Она остаётся неактивной, пока нет содержимого.",
+          whenContent: "Показывать кнопку отправки только при тексте, вложениях или отправке.",
+        },
+        options: {
+          always: "Всегда",
+          whenContent: "При вводе",
+        },
+      },
+      enterKey: {
+        label: "Клавиша Enter",
+        description: "Выберите, отправляет ли Enter сообщение или вставляет новую строку",
+        options: {
+          send: "Отправить",
+          newline: "Новая строка",
+        },
+      },
       serviceUrls: {
         label: "URL- адреса служб",
         description: "Где открыть URL- адреса запущенных скриптов",
@@ -1961,6 +1981,19 @@ export const ru: TranslationResources = {
           reset: "Сбросить",
           save: "Сохранить",
           saving: "Сохранение...",
+        },
+      },
+      voice: {
+        updating: "Обновление голосовых настроек…",
+        dictation: {
+          title: "Диктовка",
+          hint: "Микрофон в текст в композере. Выключено — хост не загружает речевые модели для диктовки.",
+          accessibilityLabel: "Включить диктовку",
+        },
+        voiceMode: {
+          title: "Голосовой режим",
+          hint: "Голосовые разговоры с агентами в реальном времени. Выключено — хост не запускает голосовые STT/TTS.",
+          accessibilityLabel: "Включить голосовой режим",
         },
       },
       agents: {

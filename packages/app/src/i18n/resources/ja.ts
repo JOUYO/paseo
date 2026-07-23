@@ -1650,6 +1650,25 @@ export const ja: TranslationResources = {
           queue: "キュー",
         },
       },
+      sendButtonVisibility: {
+        label: "送信ボタン",
+        descriptions: {
+          always: "送信ボタンを常に表示します。送信できる内容がないときは無効のままです。",
+          whenContent: "テキスト、添付、または送信中のときだけ送信ボタンを表示します。",
+        },
+        options: {
+          always: "常に",
+          whenContent: "入力時",
+        },
+      },
+      enterKey: {
+        label: "Enterキー",
+        description: "Enterで送信するか改行するかを選びます",
+        options: {
+          send: "送信",
+          newline: "改行",
+        },
+      },
       serviceUrls: {
         label: "サービスURL",
         description: "実行中のスクリプトからURLを開く場所",
@@ -1940,6 +1959,19 @@ export const ja: TranslationResources = {
           reset: "リセット",
           save: "保存",
           saving: "保存中...",
+        },
+      },
+      voice: {
+        updating: "音声設定を更新中…",
+        dictation: {
+          title: "音声入力",
+          hint: "コンポーザーでマイク入力を文字にします。オフにするとホストは音声入力用モデルを読み込みません。",
+          accessibilityLabel: "音声入力を有効にする",
+        },
+        voiceMode: {
+          title: "ボイスモード",
+          hint: "エージェントとのリアルタイム音声会話。オフにするとホストは音声 STT/TTS を実行しません。",
+          accessibilityLabel: "ボイスモードを有効にする",
         },
       },
       agents: {

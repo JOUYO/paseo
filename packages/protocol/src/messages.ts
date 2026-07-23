@@ -139,6 +139,13 @@ const MutableBrowserToolsConfigSchema = z
     enabled: z.boolean().default(false),
   })
   .passthrough();
+
+const MutableFeatureToggleSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .passthrough();
+
 export const MutableDaemonConfigSchema = z
   .object({
     mcp: z
@@ -147,6 +154,8 @@ export const MutableDaemonConfigSchema = z
       })
       .passthrough(),
     browserTools: MutableBrowserToolsConfigSchema.default({ enabled: false }),
+    dictation: MutableFeatureToggleSchema.default({ enabled: true }),
+    voiceMode: MutableFeatureToggleSchema.default({ enabled: true }),
     providers: z.record(z.string(), MutableDaemonProviderConfigSchema).default({}),
     metadataGeneration: MutableMetadataGenerationConfigSchema.default({ providers: [] }),
     autoArchiveAfterMerge: z.boolean().default(false),
@@ -160,6 +169,8 @@ export const MutableDaemonConfigPatchSchema = z
   .object({
     mcp: MutableDaemonConfigSchema.shape.mcp.partial().optional(),
     browserTools: MutableBrowserToolsConfigSchema.partial().optional(),
+    dictation: MutableFeatureToggleSchema.partial().optional(),
+    voiceMode: MutableFeatureToggleSchema.partial().optional(),
     providers: z
       .record(z.string(), MutableDaemonProviderConfigSchema.partial().passthrough())
       .optional(),

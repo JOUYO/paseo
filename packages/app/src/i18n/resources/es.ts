@@ -1681,6 +1681,27 @@ export const es: TranslationResources = {
           queue: "Cola",
         },
       },
+      sendButtonVisibility: {
+        label: "Botón de enviar",
+        descriptions: {
+          always:
+            "Mostrar siempre el botón de enviar. Permanece desactivado hasta que haya contenido.",
+          whenContent:
+            "Mostrar el botón de enviar solo cuando haya texto, archivos adjuntos o un envío en curso.",
+        },
+        options: {
+          always: "Siempre",
+          whenContent: "Al escribir",
+        },
+      },
+      enterKey: {
+        label: "Tecla Enter",
+        description: "Elige si Enter envía el mensaje o inserta una nueva línea",
+        options: {
+          send: "Enviar",
+          newline: "Nueva línea",
+        },
+      },
       serviceUrls: {
         label: "URL de servicio",
         description: "Dónde abrir URL desde scripts en ejecución",
@@ -1971,6 +1992,19 @@ export const es: TranslationResources = {
           reset: "Restablecer",
           save: "Guardar",
           saving: "Guardando...",
+        },
+      },
+      voice: {
+        updating: "Actualizando ajustes de voz…",
+        dictation: {
+          title: "Dictado",
+          hint: "Micrófono a texto en el compositor. Desactivado, el host no carga modelos de voz para dictado.",
+          accessibilityLabel: "Activar dictado",
+        },
+        voiceMode: {
+          title: "Modo de voz",
+          hint: "Conversaciones de voz en tiempo real con agentes. Desactivado, el host no ejecuta STT/TTS de voz.",
+          accessibilityLabel: "Activar modo de voz",
         },
       },
       agents: {

@@ -1635,6 +1635,25 @@ export const ar: TranslationResources = {
           queue: "طابور",
         },
       },
+      sendButtonVisibility: {
+        label: "زر الإرسال",
+        descriptions: {
+          always: "إظهار زر الإرسال دائمًا. يبقى معطلًا حتى يتوفر محتوى للإرسال.",
+          whenContent: "إظهار زر الإرسال فقط عند وجود نص أو مرفقات أو إرسال جارٍ.",
+        },
+        options: {
+          always: "دائمًا",
+          whenContent: "عند الكتابة",
+        },
+      },
+      enterKey: {
+        label: "مفتاح Enter",
+        description: "اختر ما إذا كان Enter يرسل الرسالة أو يدرج سطرًا جديدًا",
+        options: {
+          send: "إرسال",
+          newline: "سطر جديد",
+        },
+      },
       serviceUrls: {
         label: "عناوين URL للخدمة",
         description: "مكان فتح عناوين URL من تشغيل البرامج النصية",
@@ -1922,6 +1941,19 @@ export const ar: TranslationResources = {
           reset: "إعادة ضبط",
           save: "حفظ",
           saving: "جارٍ الحفظ...",
+        },
+      },
+      voice: {
+        updating: "جارٍ تحديث إعدادات الصوت…",
+        dictation: {
+          title: "الإملاء",
+          hint: "تحويل الميكروفون إلى نص في المُحرر. عند الإيقاف لا يحمّل المضيف نماذج الكلام للإملاء.",
+          accessibilityLabel: "تفعيل الإملاء",
+        },
+        voiceMode: {
+          title: "وضع الصوت",
+          hint: "محادثات صوتية فورية مع الوكلاء. عند الإيقاف لا يشغّل المضيف STT/TTS الصوتي.",
+          accessibilityLabel: "تفعيل وضع الصوت",
         },
       },
       agents: {

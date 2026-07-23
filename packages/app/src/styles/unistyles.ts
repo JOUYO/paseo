@@ -1,4 +1,5 @@
 import { StyleSheet } from "react-native-unistyles";
+import { resolveInitialUnistylesSettings } from "./resolve-initial-unistyles-settings";
 import {
   lightTheme,
   darkTheme,
@@ -24,9 +25,7 @@ StyleSheet.configure({
     lg: 992,
     xl: 1200,
   },
-  settings: {
-    adaptiveThemes: true,
-  },
+  settings: resolveInitialUnistylesSettings(),
 });
 
 // Type augmentation for TypeScript

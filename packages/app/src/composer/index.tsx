@@ -113,6 +113,7 @@ import { AttachmentLabel, AttachmentPill, AttachmentThumbnail } from "@/componen
 import { AttachmentLightbox } from "@/components/attachment-lightbox";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { useIsDictationReady } from "@/hooks/use-is-dictation-ready";
+import { useVoiceFeatureUiEnabled } from "@/hooks/use-voice-feature-ui-enabled";
 import { useForgeSearchQuery } from "@/git/use-forge-search-query";
 import { useCheckoutStatusQuery } from "@/git/use-status-query";
 import { useCheckoutPrStatusQuery } from "@/git/use-pr-status-query";
@@ -940,6 +941,7 @@ interface ComposerVoiceModeButtonProps {
 
 interface ComposerRightControlsSlotProps extends ComposerVoiceModeButtonProps {
   isVoiceModeForAgent: boolean;
+  isVoiceModeFeatureEnabled: boolean;
   hasAgent: boolean;
   isAgentRunning: boolean;
   hasSendableContent: boolean;
@@ -950,6 +952,7 @@ interface ComposerRightControlsSlotProps extends ComposerVoiceModeButtonProps {
 
 function ComposerRightControlsSlot({
   isVoiceModeForAgent,
+  isVoiceModeFeatureEnabled,
   hasAgent,
   isAgentRunning,
   hasSendableContent,
@@ -960,7 +963,11 @@ function ComposerRightControlsSlot({
 }: ComposerRightControlsSlotProps) {
   const hideVoiceForCompactInput = isCompact && hasSendableContent;
   const showVoiceModeButton =
-    !isVoiceModeForAgent && hasAgent && !isAgentRunning && !hideVoiceForCompactInput;
+    isVoiceModeFeatureEnabled &&
+    !isVoiceModeForAgent &&
+    hasAgent &&
+    !isAgentRunning &&
+    !hideVoiceForCompactInput;
   const shouldShowCancelButton = isAgentRunning && !hasSendableContent && !isProcessing;
   if (!showVoiceModeButton && !shouldShowCancelButton) return null;
   return (
@@ -1068,6 +1075,8 @@ export function Composer({
     isConnected,
     agentDirectoryStatus,
   });
+  const isDictationFeatureEnabled = useVoiceFeatureUiEnabled(serverId, "dictation");
+  const isVoiceModeFeatureEnabled = useVoiceFeatureUiEnabled(serverId, "voice");
 
   const { settings: appSettings } = useAppSettings();
 
@@ -1741,6 +1750,7 @@ export function Composer({
     () => (
       <ComposerRightControlsSlot
         isVoiceModeForAgent={isVoiceModeForAgent}
+        isVoiceModeFeatureEnabled={isVoiceModeFeatureEnabled}
         hasAgent={hasAgent}
         isAgentRunning={isAgentRunning}
         hasSendableContent={hasSendableContent}
@@ -1766,6 +1776,7 @@ export function Composer({
       isConnected,
       isCompactLayout,
       isProcessing,
+      isVoiceModeFeatureEnabled,
       isVoiceModeForAgent,
       isVoiceSwitching,
       realtimeVoiceButtonStyle,
@@ -2094,6 +2105,9 @@ export function Composer({
                 onAddImages={addImages}
                 client={client}
                 isReadyForDictation={isDictationReady}
+                isDictationFeatureEnabled={isDictationFeatureEnabled}
+                sendButtonVisibility={appSettings.sendButtonVisibility}
+                enterKeyBehavior={appSettings.enterKeyBehavior}
                 placeholder={messagePlaceholder}
                 autoFocus={messageInputAutoFocus}
                 autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}

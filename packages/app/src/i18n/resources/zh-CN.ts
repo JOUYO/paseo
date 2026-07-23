@@ -1615,6 +1615,25 @@ export const zhCN: TranslationResources = {
           queue: "排队",
         },
       },
+      sendButtonVisibility: {
+        label: "发送按钮",
+        descriptions: {
+          always: "始终显示发送按钮。没有可发送内容时保持禁用。",
+          whenContent: "仅在有文字、附件或正在发送时显示发送按钮。",
+        },
+        options: {
+          always: "始终",
+          whenContent: "输入时",
+        },
+      },
+      enterKey: {
+        label: "回车键",
+        description: "选择按 Enter 是发送消息还是换行",
+        options: {
+          send: "发送",
+          newline: "换行",
+        },
+      },
       serviceUrls: {
         label: "服务 URL",
         description: "运行脚本中的 URL 打开位置",
@@ -1714,13 +1733,13 @@ export const zhCN: TranslationResources = {
         title: "主题",
         accessibilityLabel: "主题：{{value}}",
         options: {
-          light: "Light",
-          dark: "Dark",
+          light: "浅色",
+          dark: "深色",
           zinc: "Zinc",
           midnight: "Midnight",
           claude: "Claude",
           ghostty: "Ghostty",
-          auto: "系统",
+          auto: "跟随系统",
         },
       },
       detailLevel: {
@@ -1901,6 +1920,19 @@ export const zhCN: TranslationResources = {
           reset: "重置",
           save: "保存",
           saving: "保存中...",
+        },
+      },
+      voice: {
+        updating: "正在更新语音设置…",
+        dictation: {
+          title: "听写",
+          hint: "在输入框中用麦克风转文字。关闭后主机不会为听写加载语音模型。",
+          accessibilityLabel: "启用听写",
+        },
+        voiceMode: {
+          title: "语音模式",
+          hint: "与 Agent 的实时语音对话。关闭后主机不会运行语音 STT/TTS。",
+          accessibilityLabel: "启用语音模式",
         },
       },
       agents: {

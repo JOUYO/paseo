@@ -638,3 +638,13 @@ export const THEME_SWATCHES: Record<ThemeName, string> = {
   claude: "#D97757",
   ghostty: "#8caaee",
 };
+
+/** App background (`surface0`) per named theme — keep in sync with `public/index.html` boot script. */
+export const THEME_SURFACE0: Record<ThemeName, string> = {
+  light: lightTheme.colors.surface0,
+  dark: darkTheme.colors.surface0,
+  zinc: darkZincTheme.colors.surface0,
+  midnight: darkMidnightTheme.colors.surface0,
+  claude: darkClaudeTheme.colors.surface0,
+  ghostty: darkGhosttyTheme.colors.surface0,
+};

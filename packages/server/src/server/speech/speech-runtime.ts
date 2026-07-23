@@ -349,6 +349,10 @@ export interface SpeechService {
   resolveDictationSttLanguage: () => string;
   getReadiness: () => SpeechReadinessSnapshot;
   onReadinessChange: (listener: (snapshot: SpeechReadinessSnapshot) => void) => () => void;
+  applySpeechConfig: (next: {
+    speechConfig?: PaseoSpeechConfig | null;
+    openaiConfig?: PaseoOpenAIConfig;
+  }) => Promise<void>;
   start: () => void;
   stop: () => void;
   ready: Promise<void>;
@@ -360,10 +364,10 @@ export function createSpeechService(params: {
   speechConfig?: PaseoSpeechConfig;
 }): SpeechService {
   const logger = params.logger.child({ module: "speech-runtime" });
-  const speechConfig = params.speechConfig ?? null;
-  const openaiConfig = params.openaiConfig;
-  const providers = resolveRequestedSpeechProviders(speechConfig);
-  const requestedProviders = describeRequestedProviders(providers);
+  let speechConfig: PaseoSpeechConfig | null = params.speechConfig ?? null;
+  let openaiConfig = params.openaiConfig;
+  let providers = resolveRequestedSpeechProviders(speechConfig);
+  let requestedProviders = describeRequestedProviders(providers);
 
   validateOpenAiCredentialRequirements({
     providers,
@@ -577,6 +581,13 @@ export function createSpeechService(params: {
     publishReadinessIfChanged();
   };
 
+  const clearMonitor = (): void => {
+    if (monitorTimeout) {
+      clearTimeout(monitorTimeout);
+      monitorTimeout = null;
+    }
+  };
+
   const scheduleMonitor = (): void => {
     if (stopped || monitorTimeout) {
       return;
@@ -585,6 +596,62 @@ export function createSpeechService(params: {
       monitorTimeout = null;
       void runMonitorTick();
     }, SPEECH_RUNTIME_MONITOR_INTERVAL_MS);
+  };
+
+  const applySpeechConfig = async (next: {
+    speechConfig?: PaseoSpeechConfig | null;
+    openaiConfig?: PaseoOpenAIConfig;
+  }): Promise<void> => {
+    if (stopped) {
+      return;
+    }
+    if (next.speechConfig !== undefined) {
+      speechConfig = next.speechConfig;
+    }
+    if (next.openaiConfig !== undefined) {
+      openaiConfig = next.openaiConfig;
+    }
+    providers = resolveRequestedSpeechProviders(speechConfig);
+    requestedProviders = describeRequestedProviders(providers);
+
+    validateOpenAiCredentialRequirements({
+      providers,
+      openaiConfig,
+      logger,
+    });
+
+    logger.info({ requestedProviders }, "Speech config reapplied; reconciling providers");
+
+    await runReconcile();
+
+    const snapshot = computeReadinessSnapshot();
+    if (!snapshot.voiceFeature.enabled) {
+      clearMonitor();
+      backgroundDownloadError = null;
+      backgroundDownloadInProgress = false;
+      missingLocalModelIds = [];
+      const previousLocalCleanup = localCleanup;
+      turnDetectionService = null;
+      sttService = null;
+      ttsService = null;
+      dictationSttService = null;
+      localVoiceTtsProvider = null;
+      localModelConfig = null;
+      localCleanup = () => {};
+      previousLocalCleanup();
+      publishReadinessIfChanged();
+      return;
+    }
+
+    if (!snapshot.voiceFeature.available) {
+      if (missingLocalModelIds.length > 0 && !backgroundDownloadInProgress) {
+        startBackgroundDownload();
+      }
+      scheduleMonitor();
+      return;
+    }
+
+    clearMonitor();
   };
 
   const startBackgroundDownload = (): void => {
@@ -701,10 +768,7 @@ export function createSpeechService(params: {
 
   const stop = (): void => {
     stopped = true;
-    if (monitorTimeout) {
-      clearTimeout(monitorTimeout);
-      monitorTimeout = null;
-    }
+    clearMonitor();
     localCleanup();
   };
 
@@ -717,6 +781,7 @@ export function createSpeechService(params: {
     resolveDictationSttLanguage: () => speechConfig?.sttLanguages?.dictation ?? "en",
     getReadiness: () => lastPublishedReadinessSnapshot ?? computeReadinessSnapshot(),
     onReadinessChange: subscribeSpeechReadiness,
+    applySpeechConfig,
     start,
     stop,
     ready,

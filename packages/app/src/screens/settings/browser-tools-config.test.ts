@@ -11,6 +11,8 @@ function makeConfig(browserToolsEnabled = false): MutableDaemonConfig {
   return {
     mcp: { injectIntoAgents: false },
     browserTools: { enabled: browserToolsEnabled },
+    dictation: { enabled: true },
+    voiceMode: { enabled: true },
     providers: {},
     metadataGeneration: { providers: [] },
     autoArchiveAfterMerge: false,
