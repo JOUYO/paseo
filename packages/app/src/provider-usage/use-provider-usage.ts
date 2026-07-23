@@ -14,8 +14,13 @@ export function providerUsageQueryKey(serverId: string | null | undefined) {
   return ["providerUsage", serverId ?? ""] as const;
 }
 
-async function fetchProviderUsage(client: ProviderUsageClient): Promise<ProviderUsageListPayload> {
-  return client.listProviderUsage();
+async function fetchProviderUsage(
+  client: ProviderUsageClient,
+  options?: { forceRefresh?: boolean },
+): Promise<ProviderUsageListPayload> {
+  return client.listProviderUsage(
+    options?.forceRefresh === true ? { forceRefresh: true } : undefined,
+  );
 }
 
 interface UseProviderUsageOptions {
@@ -58,14 +63,14 @@ export function useProviderUsage(
   });
 
   const refresh = useCallback(async () => {
-    if (!canFetch) return;
+    if (!canFetch || !client) return;
     await queryClient.invalidateQueries({ queryKey });
     await queryClient.fetchQuery({
       queryKey,
-      queryFn,
+      queryFn: () => fetchProviderUsage(client, { forceRefresh: true }),
       staleTime: PROVIDER_USAGE_STALE_TIME_MS,
     });
-  }, [canFetch, queryClient, queryFn, queryKey]);
+  }, [canFetch, client, queryClient, queryKey]);
 
   const view = useMemo<ProviderUsageView>(() => {
     if (!serverId || !client || !isConnected) {

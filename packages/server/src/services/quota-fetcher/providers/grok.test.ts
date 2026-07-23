@@ -182,4 +182,45 @@ describe("GrokQuotaProvider", () => {
     expect(refreshAuth).toHaveBeenCalledTimes(1);
     expect(fetchApi).toHaveBeenCalledTimes(3);
   });
+
+  test("retries transient billing fetch failures before succeeding", async () => {
+    const grokHome = await createGrokHome();
+    await fs.writeFile(
+      path.join(grokHome, "auth.json"),
+      JSON.stringify({
+        "https://auth.x.ai::account": {
+          key: "grok_cli_token",
+        },
+      }),
+    );
+    let billingCalls = 0;
+    const fetchApi = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/v1/settings")) {
+        return new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      billingCalls += 1;
+      if (billingCalls < 3) {
+        throw new TypeError("fetch failed", { cause: { code: "ECONNRESET" } });
+      }
+      return new Response(
+        JSON.stringify({ config: { monthlyLimit: { val: 100 }, used: { val: 10 } } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+    const provider = new GrokQuotaProvider({
+      logger: createTestLogger(),
+      fetch: fetchApi,
+      grokHome,
+    });
+
+    await expect(provider.fetchUsage()).resolves.toMatchObject({
+      status: "available",
+      balances: [expect.objectContaining({ used: 10, remaining: 90 })],
+    });
+    expect(billingCalls).toBe(3);
+  });
 });

@@ -23,7 +23,6 @@ import { useIsCompactFormFactor } from "@/constants/layout";
 import { useShallow } from "zustand/shallow";
 import {
   ArrowUp,
-  Square,
   Pencil,
   AudioLines,
   CircleDot,
@@ -191,11 +190,6 @@ function resolveCheckoutRemoteUrl(
   checkoutStatus: ReturnType<typeof useCheckoutStatusQuery>["status"],
 ): string | null {
   return checkoutStatus?.remoteUrl ?? null;
-}
-
-function buildCancelButtonStyle(isConnected: boolean, isCancellingAgent: boolean): object[] {
-  const disabled = !isConnected || isCancellingAgent ? styles.buttonDisabled : undefined;
-  return [styles.cancelButton, disabled].filter((value): value is object => Boolean(value));
 }
 
 function buildRealtimeVoiceButtonStyle(
@@ -862,71 +856,6 @@ function resolveContextWindowValues(
   return { contextWindowMaxTokens: null, contextWindowUsedTokens: null };
 }
 
-interface ComposerCancelButtonProps {
-  buttonIconSize: number;
-  cancelButtonStyle: (object | undefined)[];
-  handleCancelAgent: () => void;
-  isConnected: boolean;
-  isCancellingAgent: boolean;
-  agentInterruptKeys: ReturnType<typeof useShortcutKeys>;
-  t: TFunction;
-}
-
-function ComposerCancelButton({
-  buttonIconSize,
-  cancelButtonStyle,
-  handleCancelAgent,
-  isConnected,
-  isCancellingAgent,
-  agentInterruptKeys,
-  t,
-}: ComposerCancelButtonProps) {
-  const accessibilityLabel = isCancellingAgent
-    ? t("composer.cancel.cancelingAgent")
-    : t("composer.cancel.stopAgent");
-  const icon = isCancellingAgent ? (
-    <ActivityIndicator size="small" color="white" />
-  ) : (
-    <Square size={buttonIconSize} color="white" fill="white" />
-  );
-  const shortcutNode = agentInterruptKeys ? <Shortcut chord={agentInterruptKeys} /> : null;
-  return (
-    <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
-      <TooltipTrigger
-        onPress={handleCancelAgent}
-        disabled={!isConnected || isCancellingAgent}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityRole="button"
-        style={cancelButtonStyle}
-      >
-        {icon}
-      </TooltipTrigger>
-      <TooltipContent side="top" align="center" offset={8}>
-        <View style={styles.tooltipRow}>
-          <Text style={styles.tooltipText}>{t("composer.cancel.interrupt")}</Text>
-          {shortcutNode}
-        </View>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-interface ComposerCancelButtonSlotProps extends ComposerCancelButtonProps {
-  isAgentRunning: boolean;
-  hasSendableContent: boolean;
-  isProcessing: boolean;
-}
-
-function ComposerCancelButtonSlot({
-  isAgentRunning,
-  hasSendableContent,
-  isProcessing,
-  ...rest
-}: ComposerCancelButtonSlotProps) {
-  if (!isAgentRunning || hasSendableContent || isProcessing) return null;
-  return <ComposerCancelButton {...rest} />;
-}
-
 interface ComposerVoiceModeButtonProps {
   buttonIconSize: number;
   handleToggleRealtimeVoice: () => void;
@@ -945,9 +874,7 @@ interface ComposerRightControlsSlotProps extends ComposerVoiceModeButtonProps {
   hasAgent: boolean;
   isAgentRunning: boolean;
   hasSendableContent: boolean;
-  isProcessing: boolean;
   isCompact: boolean;
-  cancelButton: ReactElement;
 }
 
 function ComposerRightControlsSlot({
@@ -956,9 +883,7 @@ function ComposerRightControlsSlot({
   hasAgent,
   isAgentRunning,
   hasSendableContent,
-  isProcessing,
   isCompact,
-  cancelButton,
   ...voiceProps
 }: ComposerRightControlsSlotProps) {
   const hideVoiceForCompactInput = isCompact && hasSendableContent;
@@ -968,12 +893,10 @@ function ComposerRightControlsSlot({
     hasAgent &&
     !isAgentRunning &&
     !hideVoiceForCompactInput;
-  const shouldShowCancelButton = isAgentRunning && !hasSendableContent && !isProcessing;
-  if (!showVoiceModeButton && !shouldShowCancelButton) return null;
+  if (!showVoiceModeButton) return null;
   return (
     <View style={styles.rightControls}>
-      {showVoiceModeButton ? <ComposerVoiceModeButton {...voiceProps} /> : null}
-      {cancelButton}
+      <ComposerVoiceModeButton {...voiceProps} />
     </View>
   );
 }
@@ -1069,7 +992,6 @@ export function Composer({
   toastErrorRef.current = toast.error;
   const voice = useVoiceOptional();
   const voiceToggleKeys = useShortcutKeys("voice-toggle");
-  const agentInterruptKeys = useShortcutKeys("agent-interrupt");
   const isDictationReady = useIsDictationReady({
     serverId,
     isConnected,
@@ -1704,46 +1626,12 @@ export function Composer({
     [],
   );
 
-  const cancelButtonStyle = useMemo(
-    () => buildCancelButtonStyle(isConnected, isCancellingAgent),
-    [isConnected, isCancellingAgent],
-  );
-
   const isVoiceSwitching = voice?.isVoiceSwitching ?? false;
   const voiceButtonDisabled = !isConnected || isVoiceSwitching;
   const realtimeVoiceButtonStyle = useCallback(
     (state: PressableStateCallbackType & { hovered?: boolean }) =>
       buildRealtimeVoiceButtonStyle(state.hovered, voiceButtonDisabled, isCompactLayout),
     [isCompactLayout, voiceButtonDisabled],
-  );
-
-  const cancelButton = useMemo(
-    () => (
-      <ComposerCancelButtonSlot
-        isAgentRunning={isAgentRunning}
-        hasSendableContent={hasSendableContent}
-        isProcessing={isProcessing}
-        buttonIconSize={buttonIconSize}
-        cancelButtonStyle={cancelButtonStyle}
-        handleCancelAgent={handleCancelAgent}
-        isConnected={isConnected}
-        isCancellingAgent={isCancellingAgent}
-        agentInterruptKeys={agentInterruptKeys}
-        t={t}
-      />
-    ),
-    [
-      agentInterruptKeys,
-      buttonIconSize,
-      cancelButtonStyle,
-      handleCancelAgent,
-      hasSendableContent,
-      isAgentRunning,
-      isCancellingAgent,
-      isConnected,
-      isProcessing,
-      t,
-    ],
   );
 
   const rightContent = useMemo(
@@ -1754,7 +1642,6 @@ export function Composer({
         hasAgent={hasAgent}
         isAgentRunning={isAgentRunning}
         hasSendableContent={hasSendableContent}
-        isProcessing={isProcessing}
         isCompact={isCompactLayout}
         buttonIconSize={buttonIconSize}
         handleToggleRealtimeVoice={handleToggleRealtimeVoice}
@@ -1763,19 +1650,16 @@ export function Composer({
         realtimeVoiceButtonStyle={realtimeVoiceButtonStyle}
         voiceToggleKeys={voiceToggleKeys}
         t={t}
-        cancelButton={cancelButton}
       />
     ),
     [
       buttonIconSize,
-      cancelButton,
       handleToggleRealtimeVoice,
       hasAgent,
       hasSendableContent,
       isAgentRunning,
       isConnected,
       isCompactLayout,
-      isProcessing,
       isVoiceModeFeatureEnabled,
       isVoiceModeForAgent,
       isVoiceSwitching,
@@ -2051,7 +1935,8 @@ export function Composer({
   );
 
   const messageInputAutoFocus = autoFocus && isDesktopWebBreakpoint;
-  const submitLoadingPressHandler = isAgentRunning ? handleCancelAgent : undefined;
+  const submitLoadingPressHandler =
+    isAgentRunning && isConnected && !isCancellingAgent ? handleCancelAgent : undefined;
   const sendErrorNode = useMemo(
     () => (sendError ? <Text style={styles.sendErrorText}>{sendError}</Text> : null),
     [sendError],
@@ -2111,7 +1996,7 @@ export function Composer({
                 placeholder={messagePlaceholder}
                 autoFocus={messageInputAutoFocus}
                 autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}
-                disabled={isSubmitLoading}
+                disabled={isSubmitLoading || isCancellingAgent}
                 isPaneFocused={isPaneFocused}
                 leftContent={leftContent}
                 beforeVoiceContent={beforeVoiceContent}
@@ -2191,15 +2076,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
     position: "relative",
     width: "100%",
     gap: theme.spacing[3],
-  },
-  cancelButton: {
-    width: 28,
-    height: 28,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.palette.red[600],
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: theme.spacing[1],
   },
   rightControls: {
     flexDirection: "row",
