@@ -4,6 +4,7 @@ import {
   parseGitRemoteLocation,
 } from "@getpaseo/protocol/git-remote";
 import { shortenPath } from "@/utils/shorten-path";
+import { getHostProjectSourceDirectory, type HostProjectListItem } from "@/projects/host-projects";
 import type { AddProjectHost, GithubRepositoryChoice } from "./model";
 
 export type AddProjectMethodId = "directory-search" | "browse" | "github" | "new-directory";
@@ -21,6 +22,37 @@ export interface AddProjectPathOption {
   displayPath: string;
   secondaryText: string | null;
   disabled: boolean;
+}
+
+export interface ExistingProjectChoice {
+  project: HostProjectListItem;
+  sourceDirectory: string;
+}
+
+/**
+ * Existing project roots are already registered by the daemon. Selecting one
+ * must route to it directly instead of treating the same directory as a new
+ * project-add request.
+ */
+export function buildExistingProjectChoices(input: {
+  projects: readonly HostProjectListItem[];
+  serverId: string;
+  query: string;
+  limit?: number;
+}): ExistingProjectChoice[] {
+  const normalizedQuery = input.query.trim().toLocaleLowerCase();
+  const limit = input.limit ?? 30;
+  return input.projects
+    .flatMap((project) => {
+      const sourceDirectory = getHostProjectSourceDirectory(project, input.serverId);
+      if (!sourceDirectory) return [];
+      const haystack = [project.projectName, project.projectKey, sourceDirectory]
+        .join("\n")
+        .toLocaleLowerCase();
+      if (normalizedQuery && !haystack.includes(normalizedQuery)) return [];
+      return [{ project, sourceDirectory }];
+    })
+    .slice(0, limit);
 }
 
 export function filterAddProjectHosts(hosts: AddProjectHost[], query: string): AddProjectHost[] {
