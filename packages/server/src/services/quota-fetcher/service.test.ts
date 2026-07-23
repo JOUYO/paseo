@@ -724,6 +724,10 @@ describe("real provider usage fetchers", () => {
               usage: { creditUsage: 0 },
             }),
         ],
+        [
+          "https://cli-chat-proxy.grok.com/v1/settings",
+          () => jsonResponse({ subscription_tier_display: "SuperGrok Heavy" }),
+        ],
       ]),
     );
 
@@ -731,6 +735,7 @@ describe("real provider usage fetchers", () => {
 
     expect(grok).toMatchObject({
       status: "available",
+      planLabel: "SuperGrok Heavy",
       balances: [
         expect.objectContaining({
           id: "monthly_credits",
