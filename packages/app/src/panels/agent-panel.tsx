@@ -11,9 +11,14 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, StyleSheet as RNStyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet as RNStyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
 import ReanimatedAnimated from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import invariant from "tiny-invariant";
 import { shallow, useShallow } from "zustand/shallow";
@@ -24,6 +29,7 @@ import { FileDropZone } from "@/components/file-drop/file-drop-zone";
 import { useRetainedPanelActive } from "@/components/retained-panel";
 import { SidebarCallout } from "@/components/sidebar-callout";
 import { Composer } from "@/composer";
+import { ComposerDock } from "@/composer/dock";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { getProviderIcon } from "@/components/provider-icons";
 import {
@@ -1151,6 +1157,16 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
 }) {
   const { t } = useTranslation();
+  const [composerAreaHeight, setComposerAreaHeight] = useState(0);
+  const handleComposerAreaHeightChange = useCallback(
+    (height: number) => {
+      setComposerAreaHeight((current) => (Math.abs(current - height) < 1 ? current : height));
+      handleComposerHeightChange(height);
+    },
+    [handleComposerHeightChange],
+  );
+  const bottomContentInset =
+    agentState.archivedAt || isArchivingCurrentAgent ? 0 : composerAreaHeight;
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
       serverId,
@@ -1200,6 +1216,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         agent={effectiveAgent}
         routeBottomAnchorRequest={routeBottomAnchorRequest}
         hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
+        bottomContentInset={bottomContentInset}
         toast={toastApi}
         onOpenWorkspaceFile={onOpenWorkspaceFile}
       />
@@ -1219,6 +1236,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         onAttentionInputFocus={onAttentionInputFocus}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
+        onComposerAreaHeightChange={handleComposerAreaHeightChange}
         onMessageSent={handleMessageSent}
       />
     </RenderProfile>
@@ -1272,6 +1290,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   agent,
   routeBottomAnchorRequest,
   hasAppliedAuthoritativeHistory,
+  bottomContentInset,
   toast,
   onOpenWorkspaceFile,
 }: {
@@ -1281,6 +1300,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   agent: AgentScreenAgent;
   routeBottomAnchorRequest: RouteBottomAnchorRequest;
   hasAppliedAuthoritativeHistory: boolean;
+  bottomContentInset: number;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
 }) {
@@ -1325,6 +1345,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingPermissions={pendingPermissions}
       routeBottomAnchorRequest={routeBottomAnchorRequest}
       isAuthoritativeHistoryReady={hasAppliedAuthoritativeHistory}
+      bottomContentInset={bottomContentInset}
       toast={toast}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
     />
@@ -1343,6 +1364,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionInputFocus,
   onAttentionPromptSend,
   onComposerHeightChange,
+  onComposerAreaHeightChange,
   onMessageSent,
 }: {
   agentId?: string;
@@ -1356,6 +1378,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionInputFocus: () => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
+  onComposerAreaHeightChange: (height: number) => void;
   onMessageSent: () => void;
 }) {
   if (!agentId) {
@@ -1379,6 +1402,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
       onAttentionInputFocus={onAttentionInputFocus}
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
+      onComposerAreaHeightChange={onComposerAreaHeightChange}
       onMessageSent={onMessageSent}
     />
   );
@@ -1394,6 +1418,7 @@ function ActiveAgentComposer({
   onAttentionInputFocus,
   onAttentionPromptSend,
   onComposerHeightChange,
+  onComposerAreaHeightChange,
   onMessageSent,
 }: {
   agentId: string;
@@ -1405,13 +1430,20 @@ function ActiveAgentComposer({
   onAttentionInputFocus: () => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
+  onComposerAreaHeightChange: (height: number) => void;
   onMessageSent: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   const isCompactFormFactor = useIsCompactFormFactor();
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
     COMPACT_FORM_FACTOR_WIDTH,
     { initialIsBelow: isCompactFormFactor },
+  );
+  const handleInputAreaLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      onInputAreaLayout(event);
+      onComposerAreaHeightChange(event.nativeEvent.layout.height);
+    },
+    [onComposerAreaHeightChange, onInputAreaLayout],
   );
   const paneContext = usePaneContext();
   const { workspaceId, tabId, retargetCurrentTab, openTab } = paneContext;
@@ -1515,21 +1547,8 @@ function ActiveAgentComposer({
     ],
   );
 
-  const { style: composerKeyboardStyle } = useKeyboardShiftStyle({
-    mode: "translate",
-  });
-
-  const inputAreaStyle = useMemo(
-    () => [
-      animatedStaticStyles.inputAreaWrapper,
-      { paddingBottom: insets.bottom },
-      composerKeyboardStyle,
-    ],
-    [insets.bottom, composerKeyboardStyle],
-  );
-
   return (
-    <ReanimatedAnimated.View style={inputAreaStyle} onLayout={onInputAreaLayout}>
+    <ComposerDock compact={isCompactFormFactor} onLayout={handleInputAreaLayout}>
       <SubagentsTrack
         rows={subagentRows}
         onOpenSubagent={handleOpenSubagent}
@@ -1562,7 +1581,7 @@ function ActiveAgentComposer({
         onClientSlashCommand={handleClientSlashCommand}
         isCompactLayout={isCompactComposerLayout}
       />
-    </ReanimatedAnimated.View>
+    </ComposerDock>
   );
 }
 
@@ -1641,9 +1660,6 @@ const animatedStaticStyles = RNStyleSheet.create({
   content: {
     flex: 1,
   },
-  inputAreaWrapper: {
-    width: "100%",
-  },
 });
 
 const styles = StyleSheet.create((theme) => ({
@@ -1653,6 +1669,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   container: {
     flex: 1,
+    position: "relative",
     backgroundColor: theme.colors.surface0,
   },
   contentContainer: {

@@ -108,6 +108,7 @@ function WebStreamViewport(props: StreamRenderInput & { isMobileBreakpoint: bool
     isLoadingOlderHistory,
     hasOlderHistory,
     scrollEnabled,
+    bottomContentInset = 0,
     isMobileBreakpoint,
   } = props;
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -495,12 +496,12 @@ function WebStreamViewport(props: StreamRenderInput & { isMobileBreakpoint: bool
       flexDirection: "column",
       minHeight: "100%",
       paddingTop: 16,
-      paddingBottom: 16,
+      paddingBottom: 16 + bottomContentInset,
       paddingLeft: isMobileBreakpoint ? 8 : 16,
       paddingRight: isMobileBreakpoint ? 8 : 16,
       boxSizing: "border-box",
     };
-  }, [isMobileBreakpoint]);
+  }, [bottomContentInset, isMobileBreakpoint]);
   const scrollContainerStyle = useMemo((): CSSProperties => {
     return {
       flex: 1,
