@@ -1683,6 +1683,27 @@ export const fr: TranslationResources = {
           queue: "File d'attente",
         },
       },
+      sendButtonVisibility: {
+        label: "Bouton d'envoi",
+        descriptions: {
+          always:
+            "Toujours afficher le bouton d'envoi. Il reste désactivé tant qu'il n'y a rien à envoyer.",
+          whenContent:
+            "Afficher le bouton d'envoi uniquement s'il y a du texte, des pièces jointes ou un envoi en cours.",
+        },
+        options: {
+          always: "Toujours",
+          whenContent: "À la saisie",
+        },
+      },
+      enterKey: {
+        label: "Touche Entrée",
+        description: "Choisir si Entrée envoie le message ou insère une nouvelle ligne",
+        options: {
+          send: "Envoyer",
+          newline: "Nouvelle ligne",
+        },
+      },
       serviceUrls: {
         label: "URL de services",
         description: "Où ouvrir les URL à partir de scripts en cours d'exécution",
@@ -1974,6 +1995,19 @@ export const fr: TranslationResources = {
           reset: "Réinitialiser",
           save: "Sauvegarder",
           saving: "Sauvegarde...",
+        },
+      },
+      voice: {
+        updating: "Mise à jour des paramètres vocaux…",
+        dictation: {
+          title: "Dictée",
+          hint: "Microphone vers texte dans le compositeur. Désactivé, l'hôte ne charge pas les modèles vocaux pour la dictée.",
+          accessibilityLabel: "Activer la dictée",
+        },
+        voiceMode: {
+          title: "Mode vocal",
+          hint: "Conversations vocales en temps réel avec les agents. Désactivé, l'hôte n'exécute pas le STT/TTS vocal.",
+          accessibilityLabel: "Activer le mode vocal",
         },
       },
       agents: {

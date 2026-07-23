@@ -50,7 +50,9 @@ import {
   useSettings,
   parseTerminalScrollbackLines,
   type AppSettings,
+  type EnterKeyBehavior,
   type SendBehavior,
+  type SendButtonVisibility,
   type ServiceUrlBehavior,
   type Settings as EffectiveSettings,
 } from "@/hooks/use-settings";
@@ -224,6 +226,26 @@ function getSendBehaviorOptions(t: TFunction) {
   ];
 }
 
+function getSendButtonVisibilityOptions(t: TFunction) {
+  return [
+    {
+      value: "always" as const,
+      label: t("settings.general.sendButtonVisibility.options.always"),
+    },
+    {
+      value: "whenContent" as const,
+      label: t("settings.general.sendButtonVisibility.options.whenContent"),
+    },
+  ];
+}
+
+function getEnterKeyBehaviorOptions(t: TFunction) {
+  return [
+    { value: "send" as const, label: t("settings.general.enterKey.options.send") },
+    { value: "newline" as const, label: t("settings.general.enterKey.options.newline") },
+  ];
+}
+
 function getServiceUrlBehaviorLabel(t: TFunction, value: ServiceUrlBehavior): string {
   const labels: Record<ServiceUrlBehavior, string> = {
     ask: t("settings.general.serviceUrls.options.ask"),
@@ -248,6 +270,8 @@ interface GeneralSectionProps {
   settings: AppSettings;
   isDesktopApp: boolean;
   handleSendBehaviorChange: (behavior: SendBehavior) => void;
+  handleSendButtonVisibilityChange: (visibility: SendButtonVisibility) => void;
+  handleEnterKeyBehaviorChange: (behavior: EnterKeyBehavior) => void;
   handleServiceUrlBehaviorChange: (behavior: ServiceUrlBehavior) => void;
   handleLanguageChange: (language: AppLanguage) => void;
   handleTerminalScrollbackLinesChange: (lines: number) => void;
@@ -304,6 +328,8 @@ function GeneralSection({
   settings,
   isDesktopApp,
   handleSendBehaviorChange,
+  handleSendButtonVisibilityChange,
+  handleEnterKeyBehaviorChange,
   handleServiceUrlBehaviorChange,
   handleLanguageChange,
   handleTerminalScrollbackLinesChange,
@@ -311,10 +337,16 @@ function GeneralSection({
   const { t, i18n } = useTranslation();
   const activeLocale = getActiveLocale(i18n.language);
   const sendBehaviorOptions = useMemo(() => getSendBehaviorOptions(t), [t]);
+  const sendButtonVisibilityOptions = useMemo(() => getSendButtonVisibilityOptions(t), [t]);
+  const enterKeyBehaviorOptions = useMemo(() => getEnterKeyBehaviorOptions(t), [t]);
   const sendBehaviorDescriptionKey =
     settings.sendBehavior === "interrupt"
       ? "settings.general.defaultSend.descriptions.interrupt"
       : "settings.general.defaultSend.descriptions.queue";
+  const sendButtonVisibilityDescriptionKey =
+    settings.sendButtonVisibility === "always"
+      ? "settings.general.sendButtonVisibility.descriptions.always"
+      : "settings.general.sendButtonVisibility.descriptions.whenContent";
   const selectedLanguageOption = LANGUAGE_OPTIONS.find(
     (option) => option.value === settings.language,
   );
@@ -363,6 +395,32 @@ function GeneralSection({
             value={settings.sendBehavior}
             onValueChange={handleSendBehaviorChange}
             options={sendBehaviorOptions}
+          />
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>
+              {t("settings.general.sendButtonVisibility.label")}
+            </Text>
+            <Text style={settingsStyles.rowHint}>{t(sendButtonVisibilityDescriptionKey)}</Text>
+          </View>
+          <SegmentedControl
+            size="sm"
+            value={settings.sendButtonVisibility}
+            onValueChange={handleSendButtonVisibilityChange}
+            options={sendButtonVisibilityOptions}
+          />
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>{t("settings.general.enterKey.label")}</Text>
+            <Text style={settingsStyles.rowHint}>{t("settings.general.enterKey.description")}</Text>
+          </View>
+          <SegmentedControl
+            size="sm"
+            value={settings.enterKeyBehavior}
+            onValueChange={handleEnterKeyBehaviorChange}
+            options={enterKeyBehaviorOptions}
           />
         </View>
         <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
@@ -1173,6 +1231,20 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+  const handleSendButtonVisibilityChange = useCallback(
+    (visibility: SendButtonVisibility) => {
+      void updateSettings({ sendButtonVisibility: visibility });
+    },
+    [updateSettings],
+  );
+
+  const handleEnterKeyBehaviorChange = useCallback(
+    (enterKeyBehavior: EnterKeyBehavior) => {
+      void updateSettings({ enterKeyBehavior });
+    },
+    [updateSettings],
+  );
+
   const handleServiceUrlBehaviorChange = useCallback(
     (behavior: ServiceUrlBehavior) => {
       void updateSettings({ serviceUrlBehavior: behavior });
@@ -1397,6 +1469,8 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                 settings={settings}
                 isDesktopApp={isDesktopApp}
                 handleSendBehaviorChange={handleSendBehaviorChange}
+                handleSendButtonVisibilityChange={handleSendButtonVisibilityChange}
+                handleEnterKeyBehaviorChange={handleEnterKeyBehaviorChange}
                 handleServiceUrlBehaviorChange={handleServiceUrlBehaviorChange}
                 handleLanguageChange={handleLanguageChange}
                 handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}

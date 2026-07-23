@@ -1645,6 +1645,26 @@ export const en = {
           queue: "Queue",
         },
       },
+      sendButtonVisibility: {
+        label: "Send button",
+        descriptions: {
+          always: "Always show the send button. It stays disabled until there is content to send.",
+          whenContent:
+            "Show the send button only when there is text, attachments, or a send in progress.",
+        },
+        options: {
+          always: "Always",
+          whenContent: "When typing",
+        },
+      },
+      enterKey: {
+        label: "Enter key",
+        description: "Choose whether Enter sends the message or inserts a new line",
+        options: {
+          send: "Send",
+          newline: "New line",
+        },
+      },
       serviceUrls: {
         label: "Service URLs",
         description: "Where to open URLs from running scripts",
@@ -1933,6 +1953,19 @@ export const en = {
           reset: "Reset",
           save: "Save",
           saving: "Saving...",
+        },
+      },
+      voice: {
+        updating: "Updating voice settings…",
+        dictation: {
+          title: "Dictation",
+          hint: "Microphone-to-text in the composer. When off, the host does not load speech models for dictation.",
+          accessibilityLabel: "Enable dictation",
+        },
+        voiceMode: {
+          title: "Voice mode",
+          hint: "Realtime voice conversations with agents. When off, the host does not run voice STT/TTS.",
+          accessibilityLabel: "Enable voice mode",
         },
       },
       agents: {

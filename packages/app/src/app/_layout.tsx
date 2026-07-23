@@ -11,6 +11,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -20,7 +21,8 @@ import { AppState, useWindowDimensions, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StyleSheet, UnistylesRuntime, useUnistyles } from "react-native-unistyles";
+import { StyleSheet, useUnistyles } from "react-native-unistyles";
+import { applyThemeSetting } from "@/styles/apply-theme-setting";
 import { CommandCenter, CommandCenterRootActions } from "@/command-center/command-center";
 import { CommandCenterProvider } from "@/command-center/provider";
 import { AddProjectFlowHost } from "@/components/add-project-flow-host";
@@ -100,7 +102,7 @@ import { getDaemonStartService } from "@/runtime/daemon-start-service";
 import { applyAppearance } from "@/screens/settings/appearance/apply-appearance";
 import { selectIsAgentListOpen, usePanelStore } from "@/stores/panel-store";
 import { flushDraftPersistStorage } from "@/stores/draft-store";
-import { THEME_TO_UNISTYLES, type ThemeName } from "@/styles/theme";
+import type { ThemeName } from "@/styles/theme";
 import { installWebScrollbarStyles } from "@/styles/install-web-scrollbar-styles";
 import type { HostProfile } from "@/types/host-connection";
 import { toggleDesktopSidebarsWithCheckoutIntent } from "@/utils/desktop-sidebar-toggle";
@@ -615,21 +617,18 @@ function ProvidersWrapper({ children }: { children: ReactNode }) {
   const { settings, isLoading: settingsLoading } = useAppSettings();
   const { upsertConnectionFromOfferUrl } = useHostMutations();
 
-  // Apply theme setting on mount and when it changes
-  useEffect(() => {
+  // Apply theme before paint once settings resolve (and when the user changes it).
+  // Web seeds the settings query + Unistyles `initialTheme` from localStorage so
+  // this is usually a no-op on first paint; native waits for AsyncStorage.
+  useLayoutEffect(() => {
     if (settingsLoading) return;
-    if (settings.theme === "auto") {
-      UnistylesRuntime.setAdaptiveThemes(true);
-    } else {
-      UnistylesRuntime.setAdaptiveThemes(false);
-      UnistylesRuntime.setTheme(THEME_TO_UNISTYLES[settings.theme]);
-    }
+    applyThemeSetting(settings.theme);
   }, [settingsLoading, settings.theme]);
 
   // Apply font / size / syntax appearance settings on mount and when they change.
   // Sibling to the theme effect above; order is irrelevant because both patch all
   // six registered theme keys, so the active key is always current.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (settingsLoading) return;
     applyAppearance({
       uiFontFamily: settings.uiFontFamily,
@@ -647,9 +646,15 @@ function ProvidersWrapper({ children }: { children: ReactNode }) {
     settings.syntaxTheme,
   ]);
 
+  // Avoid painting the tree under DEFAULT/system colors before persisted settings
+  // resolve (native AsyncStorage). Web usually has sync-hydrated settings already.
+  if (settingsLoading) {
+    return <View style={layoutStyles.surfaceFill} />;
+  }
+
   return (
     <VoiceProvider>
-      <DesktopWindowControlsSync enabled={!settingsLoading} />
+      <DesktopWindowControlsSync enabled />
       <OfferLinkListener upsertDaemonFromOfferUrl={upsertConnectionFromOfferUrl} />
       <HostSessionManager />
       <FaviconStatusSync />
