@@ -48,6 +48,10 @@ export function ProviderUsageCard({
   const footer = footerText(usage);
   const balances = usage.balances ?? [];
   const details = usage.details ?? [];
+  const accountDetail = details.find((detail) => detail.id === "account_email") ?? null;
+  const remainingDetails = accountDetail
+    ? details.filter((detail) => detail.id !== accountDetail.id)
+    : details;
 
   const containerStyle = useMemo(
     () => [styles.container, compact ? styles.containerCompact : styles.containerPadded],
@@ -79,6 +83,12 @@ export function ProviderUsageCard({
         ) : null}
       </View>
 
+      {accountDetail ? (
+        <Text style={styles.account} numberOfLines={1}>
+          {accountDetail.value}
+        </Text>
+      ) : null}
+
       {usage.error ? (
         <Text style={styles.error} numberOfLines={3}>
           {usage.error}
@@ -96,9 +106,9 @@ export function ProviderUsageCard({
         </View>
       ) : null}
 
-      {details.length > 0 ? (
+      {remainingDetails.length > 0 ? (
         <View style={styles.details}>
-          {details.map((detail) => (
+          {remainingDetails.map((detail) => (
             <View key={detail.id} style={styles.detailRow}>
               <Text style={styles.detailLabel} numberOfLines={1}>
                 {detail.label}
@@ -163,6 +173,10 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.statusDanger,
   },
   statusLabel: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.xs,
+  },
+  account: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.xs,
   },

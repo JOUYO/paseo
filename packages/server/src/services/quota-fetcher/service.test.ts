@@ -562,6 +562,7 @@ describe("real provider usage fetchers", () => {
         expect.objectContaining({ id: "weekly", usedPct: 8 }),
       ]),
       balances: [expect.objectContaining({ id: "credits", remaining: 0 })],
+      details: [{ id: "account_email", label: "Account email", value: "user@example.com" }],
     });
   });
 
