@@ -124,8 +124,7 @@ interface WebSocketServerConfig {
   hostnames?: HostnamesConfig;
 }
 
-type WebSocketRuntimeMetrics = SessionRuntimeMetrics &
-  CheckoutDiffMetrics & { agentSubscriptionCount: number };
+type WebSocketRuntimeMetrics = SessionRuntimeMetrics & CheckoutDiffMetrics;
 interface GitRuntimeMetrics {
   commands: GitCommandRuntimeMetricsSnapshot;
   workspaceService: WorkspaceGitServiceMetrics;
@@ -2090,7 +2089,6 @@ export class VoiceAssistantWebSocketServer {
 
     return {
       ...this.checkoutDiffManager.getMetrics(),
-      agentSubscriptionCount: this.agentManager.subscriptionCount(),
       terminalDirectorySubscriptionCount,
       terminalSubscriptionCount,
       workspaceGitWatchedDirectoryCount,
