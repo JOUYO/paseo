@@ -366,6 +366,49 @@ export type ACPExtensionCommandsParser = (
   params: Record<string, unknown>,
 ) => AgentSlashCommand[] | null;
 
+export type ACPModelDefinitionTransformer = (
+  model: AvailableACPModel,
+  definition: AgentModelDefinition,
+) => AgentModelDefinition;
+
+export interface ACPContextUsageResolverInput {
+  sessionId: string;
+  cwd: string;
+  modelId: string | null;
+  usage: AgentUsage | undefined;
+}
+
+export type ACPContextUsageResolver = (
+  input: ACPContextUsageResolverInput,
+) => AgentUsage | undefined;
+
+export interface ACPLaunchOnlyConfig {
+  mode?: boolean;
+  model?: boolean;
+  thinkingOption?: boolean;
+}
+
+export type ACPSessionLaunchArgsPlacement = "append" | "before-default-args";
+
+export function buildACPSessionProcessArgs({
+  prefixArgs,
+  defaultArgs,
+  sessionArgs,
+  placement,
+}: {
+  prefixArgs: string[];
+  defaultArgs: string[];
+  sessionArgs: string[];
+  placement: ACPSessionLaunchArgsPlacement;
+}): string[] {
+  return [
+    ...prefixArgs,
+    ...(placement === "before-default-args" ? sessionArgs : []),
+    ...defaultArgs,
+    ...(placement === "append" ? sessionArgs : []),
+  ];
+}
+
 interface ACPAgentClientOptions {
   provider: string;
   logger: Logger;
@@ -373,6 +416,13 @@ interface ACPAgentClientOptions {
   defaultCommand: [string, ...string[]];
   defaultModes?: AgentMode[];
   modelTransformer?: (models: AgentModelDefinition[]) => AgentModelDefinition[];
+  modelDefinitionTransformer?: ACPModelDefinitionTransformer;
+  contextUsageResolver?: ACPContextUsageResolver;
+  sessionLaunchArgs?: (config: AgentSessionConfig) => string[];
+  sessionLaunchArgsPlacement?: ACPSessionLaunchArgsPlacement;
+  autoApprovePermissionModes?: readonly string[];
+  launchOnlyConfig?: ACPLaunchOnlyConfig;
+  persistenceMetadata?: (config: AgentSessionConfig) => AgentMetadata;
   sessionResponseTransformer?: (response: SessionStateResponse) => SessionStateResponse;
   configOptionsTransformer?: (configOptions: SessionConfigOption[]) => SessionConfigOption[];
   configFeatureOptions?: ACPConfigFeatureOption[];
@@ -403,6 +453,12 @@ interface ACPAgentSessionOptions {
   defaultCommand: [string, ...string[]];
   defaultModes: AgentMode[];
   modelTransformer?: (models: AgentModelDefinition[]) => AgentModelDefinition[];
+  contextUsageResolver?: ACPContextUsageResolver;
+  sessionLaunchArgs?: (config: AgentSessionConfig) => string[];
+  sessionLaunchArgsPlacement?: ACPSessionLaunchArgsPlacement;
+  autoApprovePermissionModes?: readonly string[];
+  launchOnlyConfig?: ACPLaunchOnlyConfig;
+  persistenceMetadata?: (config: AgentSessionConfig) => AgentMetadata;
   sessionResponseTransformer?: (response: SessionStateResponse) => SessionStateResponse;
   configOptionsTransformer?: (configOptions: SessionConfigOption[]) => SessionConfigOption[];
   configFeatureOptions?: ACPConfigFeatureOption[];
@@ -517,7 +573,7 @@ interface SelectConfigChoice {
   description?: string | null;
   group?: string;
 }
-type AvailableACPModel = NonNullable<SessionModelState["availableModels"]>[number];
+export type AvailableACPModel = NonNullable<SessionModelState["availableModels"]>[number];
 
 interface ACPModeSelection {
   availableMode: AgentMode | null;
@@ -640,20 +696,26 @@ export function deriveModelDefinitionsFromACP(
   provider: string,
   models: SessionModelState | null | undefined,
   configOptions?: SessionConfigOption[] | null,
+  modelDefinitionTransformer?: ACPModelDefinitionTransformer,
 ): AgentModelDefinition[] {
   const thinkingOptions = deriveSelectorOptions(configOptions, "thought_level");
   const defaultThinkingOptionId = thinkingOptions.find((option) => option.isDefault)?.id ?? null;
 
   if (models?.availableModels?.length) {
-    return models.availableModels.map((model) => ({
-      provider,
-      id: model.modelId,
-      label: model.name,
-      description: model.description ?? undefined,
-      isDefault: model.modelId === models.currentModelId,
-      thinkingOptions: thinkingOptions.length > 0 ? thinkingOptions : undefined,
-      defaultThinkingOptionId: defaultThinkingOptionId ?? undefined,
-    }));
+    return models.availableModels.map((model) => {
+      const definition: AgentModelDefinition = {
+        provider,
+        id: model.modelId,
+        label: model.name,
+        description: model.description ?? undefined,
+        isDefault: model.modelId === models.currentModelId,
+        thinkingOptions: thinkingOptions.length > 0 ? thinkingOptions : undefined,
+        defaultThinkingOptionId: defaultThinkingOptionId ?? undefined,
+      };
+      return modelDefinitionTransformer
+        ? modelDefinitionTransformer(model, definition)
+        : definition;
+    });
   }
 
   const modelOptions = deriveSelectorOptions(configOptions, "model");
@@ -703,6 +765,13 @@ export class ACPAgentClient implements AgentClient {
   protected readonly defaultCommand: [string, ...string[]];
   protected readonly defaultModes: AgentMode[];
   private readonly modelTransformer?: (models: AgentModelDefinition[]) => AgentModelDefinition[];
+  private readonly modelDefinitionTransformer?: ACPModelDefinitionTransformer;
+  private readonly contextUsageResolver?: ACPContextUsageResolver;
+  private readonly sessionLaunchArgs?: (config: AgentSessionConfig) => string[];
+  private readonly sessionLaunchArgsPlacement: ACPSessionLaunchArgsPlacement;
+  private readonly autoApprovePermissionModes: readonly string[];
+  private readonly launchOnlyConfig: ACPLaunchOnlyConfig;
+  private readonly persistenceMetadata?: (config: AgentSessionConfig) => AgentMetadata;
   private readonly sessionResponseTransformer?: (
     response: SessionStateResponse,
   ) => SessionStateResponse;
@@ -742,6 +811,13 @@ export class ACPAgentClient implements AgentClient {
     this.defaultCommand = options.defaultCommand;
     this.defaultModes = options.defaultModes ?? [];
     this.modelTransformer = options.modelTransformer;
+    this.modelDefinitionTransformer = options.modelDefinitionTransformer;
+    this.contextUsageResolver = options.contextUsageResolver;
+    this.sessionLaunchArgs = options.sessionLaunchArgs;
+    this.sessionLaunchArgsPlacement = options.sessionLaunchArgsPlacement ?? "append";
+    this.autoApprovePermissionModes = options.autoApprovePermissionModes ?? [];
+    this.launchOnlyConfig = options.launchOnlyConfig ?? {};
+    this.persistenceMetadata = options.persistenceMetadata;
     this.sessionResponseTransformer = options.sessionResponseTransformer;
     this.configOptionsTransformer = options.configOptionsTransformer;
     this.configFeatureOptions = options.configFeatureOptions ?? [];
@@ -771,6 +847,12 @@ export class ACPAgentClient implements AgentClient {
         defaultCommand: this.defaultCommand,
         defaultModes: this.defaultModes,
         modelTransformer: this.modelTransformer,
+        contextUsageResolver: this.contextUsageResolver,
+        sessionLaunchArgs: this.sessionLaunchArgs,
+        sessionLaunchArgsPlacement: this.sessionLaunchArgsPlacement,
+        autoApprovePermissionModes: this.autoApprovePermissionModes,
+        launchOnlyConfig: this.launchOnlyConfig,
+        persistenceMetadata: this.persistenceMetadata,
         sessionResponseTransformer: this.sessionResponseTransformer,
         configOptionsTransformer: this.configOptionsTransformer,
         configFeatureOptions: this.configFeatureOptions,
@@ -821,6 +903,12 @@ export class ACPAgentClient implements AgentClient {
       defaultCommand: this.defaultCommand,
       defaultModes: this.defaultModes,
       modelTransformer: this.modelTransformer,
+      contextUsageResolver: this.contextUsageResolver,
+      sessionLaunchArgs: this.sessionLaunchArgs,
+      sessionLaunchArgsPlacement: this.sessionLaunchArgsPlacement,
+      autoApprovePermissionModes: this.autoApprovePermissionModes,
+      launchOnlyConfig: this.launchOnlyConfig,
+      persistenceMetadata: this.persistenceMetadata,
       sessionResponseTransformer: this.sessionResponseTransformer,
       configOptionsTransformer: this.configOptionsTransformer,
       configFeatureOptions: this.configFeatureOptions,
@@ -867,6 +955,7 @@ export class ACPAgentClient implements AgentClient {
           this.provider,
           transformed.models,
           transformed.configOptions,
+          this.modelDefinitionTransformer,
         );
         const modeInfo = deriveModesFromACP(
           this.defaultModes,
@@ -1185,6 +1274,7 @@ export class ACPAgentClient implements AgentClient {
           this.provider,
           transformed.models,
           transformed.configOptions,
+          this.modelDefinitionTransformer,
         );
         const modeInfo = deriveModesFromACP(
           this.defaultModes,
@@ -1271,6 +1361,12 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   private readonly defaultCommand: [string, ...string[]];
   private readonly defaultModes: AgentMode[];
   protected readonly modelTransformer?: (models: AgentModelDefinition[]) => AgentModelDefinition[];
+  private readonly contextUsageResolver?: ACPContextUsageResolver;
+  private readonly sessionLaunchArgs?: (config: AgentSessionConfig) => string[];
+  private readonly sessionLaunchArgsPlacement: ACPSessionLaunchArgsPlacement;
+  private readonly autoApprovePermissionModes: Set<string>;
+  private readonly launchOnlyConfig: ACPLaunchOnlyConfig;
+  private readonly persistenceMetadata?: (config: AgentSessionConfig) => AgentMetadata;
   private readonly sessionResponseTransformer?: (
     response: SessionStateResponse,
   ) => SessionStateResponse;
@@ -1341,6 +1437,12 @@ export class ACPAgentSession implements AgentSession, ACPClient {
     this.defaultCommand = options.defaultCommand;
     this.defaultModes = options.defaultModes;
     this.modelTransformer = options.modelTransformer;
+    this.contextUsageResolver = options.contextUsageResolver;
+    this.sessionLaunchArgs = options.sessionLaunchArgs;
+    this.sessionLaunchArgsPlacement = options.sessionLaunchArgsPlacement ?? "append";
+    this.autoApprovePermissionModes = new Set(options.autoApprovePermissionModes ?? []);
+    this.launchOnlyConfig = options.launchOnlyConfig ?? {};
+    this.persistenceMetadata = options.persistenceMetadata;
     this.sessionResponseTransformer = options.sessionResponseTransformer;
     this.configOptionsTransformer = options.configOptionsTransformer;
     this.configFeatureOptions = options.configFeatureOptions ?? [];
@@ -1386,6 +1488,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       this.bootstrapThreadEventPending = true;
       this.applySessionState(response);
       await this.applyConfiguredOverrides();
+      this.refreshContextUsage();
     } catch (error) {
       await this.closeAfterInitializationFailure(error);
     }
@@ -1440,6 +1543,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       }
 
       await this.applyConfiguredOverrides();
+      this.refreshContextUsage();
     } catch (error) {
       await this.closeAfterInitializationFailure(error);
     }
@@ -1530,6 +1634,13 @@ export class ACPAgentSession implements AgentSession, ACPClient {
         type: "thread_started",
         provider: this.provider,
         sessionId: this.sessionId,
+      });
+    }
+    if (this.currentTurnUsage) {
+      callback({
+        type: "usage_updated",
+        provider: this.provider,
+        usage: this.currentTurnUsage,
       });
     }
     return () => {
@@ -1624,6 +1735,18 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   async setMode(modeId: string): Promise<void> {
     if (!this.connection || !this.sessionId) {
       throw new Error("ACP session not initialized");
+    }
+    if (this.launchOnlyConfig.mode) {
+      if (modeId === this.currentMode) return;
+      this.currentMode = modeId;
+      this.config.modeId = modeId;
+      this.pushEvent({
+        type: "mode_changed",
+        provider: this.provider,
+        currentModeId: this.currentMode,
+        availableModes: [...this.availableModes],
+      });
+      return;
     }
 
     const selection = resolveACPModeSelection({
@@ -1760,6 +1883,17 @@ export class ACPAgentSession implements AgentSession, ACPClient {
     if (!this.connection || !this.sessionId) {
       throw new Error("ACP session not initialized");
     }
+    if (this.launchOnlyConfig.model) {
+      if (modelId === this.currentModel) return;
+      this.currentModel = modelId;
+      this.config.model = modelId ?? undefined;
+      this.pushEvent({
+        type: "model_changed",
+        provider: this.provider,
+        runtimeInfo: this.runtimeInfo(),
+      });
+      return;
+    }
     if (!modelId) {
       this.currentModel = null;
       return;
@@ -1854,6 +1988,17 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   async setThinkingOption(thinkingOptionId: string | null): Promise<void> {
     if (!this.connection || !this.sessionId) {
       throw new Error("ACP session not initialized");
+    }
+    if (this.launchOnlyConfig.thinkingOption) {
+      if (thinkingOptionId === this.thinkingOptionId) return;
+      this.thinkingOptionId = thinkingOptionId;
+      this.config.thinkingOptionId = thinkingOptionId ?? undefined;
+      this.pushEvent({
+        type: "thinking_option_changed",
+        provider: this.provider,
+        thinkingOptionId: this.thinkingOptionId,
+      });
+      return;
     }
     if (!thinkingOptionId) {
       this.thinkingOptionId = null;
@@ -2014,6 +2159,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       metadata: {
         ...this.config,
         title: this.currentTitle,
+        ...this.persistenceMetadata?.(this.config),
       },
     };
   }
@@ -2083,6 +2229,12 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   }
 
   async requestPermission(params: RequestPermissionRequest): Promise<RequestPermissionResponse> {
+    if (this.currentMode && this.autoApprovePermissionModes.has(this.currentMode)) {
+      const selectedOption = selectPermissionOption(params.options, { behavior: "allow" });
+      if (selectedOption) {
+        return { outcome: { outcome: "selected", optionId: selectedOption.optionId } };
+      }
+    }
     // Match Zed acp.rs:3189-3220: generic ACP permission requests stay pure pass-through.
     const requestId = randomUUID();
     let toolSnapshot =
@@ -2319,7 +2471,12 @@ export class ACPAgentSession implements AgentSession, ACPClient {
     }
 
     const command = prefix.command;
-    const args = [...prefix.args, ...this.defaultCommand.slice(1)];
+    const args = buildACPSessionProcessArgs({
+      prefixArgs: prefix.args,
+      defaultArgs: this.defaultCommand.slice(1),
+      sessionArgs: this.sessionLaunchArgs?.(this.config) ?? [],
+      placement: this.sessionLaunchArgsPlacement,
+    });
     const child = spawnProcess(command, args, {
       cwd: this.config.cwd,
       ...createProviderEnvSpec({
@@ -2416,7 +2573,9 @@ export class ACPAgentSession implements AgentSession, ACPClient {
 
   private async applyConfiguredOverrides(): Promise<void> {
     const configuredModeId = this.config.modeId;
-    if (configuredModeId && configuredModeId !== this.currentMode) {
+    if (configuredModeId && this.launchOnlyConfig.mode) {
+      this.currentMode = configuredModeId;
+    } else if (configuredModeId && configuredModeId !== this.currentMode) {
       const selection = resolveACPModeSelection({
         modeId: configuredModeId,
         availableModes: this.availableModes,
@@ -2425,7 +2584,9 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       await this.setModeWithSelection({ modeId: configuredModeId, selection });
     }
     const configuredModelId = this.config.model;
-    if (configuredModelId && configuredModelId !== this.currentModel) {
+    if (configuredModelId && this.launchOnlyConfig.model) {
+      this.currentModel = configuredModelId;
+    } else if (configuredModelId && configuredModelId !== this.currentModel) {
       const selection = resolveACPModelSelection({
         modelId: configuredModelId,
         availableModels: this.availableModels,
@@ -2443,7 +2604,12 @@ export class ACPAgentSession implements AgentSession, ACPClient {
         );
       }
     }
-    if (this.config.thinkingOptionId && this.config.thinkingOptionId !== this.thinkingOptionId) {
+    if (this.config.thinkingOptionId && this.launchOnlyConfig.thinkingOption) {
+      this.thinkingOptionId = this.config.thinkingOptionId;
+    } else if (
+      this.config.thinkingOptionId &&
+      this.config.thinkingOptionId !== this.thinkingOptionId
+    ) {
       await this.setThinkingOption(this.config.thinkingOptionId);
     }
     const configuredFeatureValues = this.config.featureValues ?? {};
@@ -2629,6 +2795,10 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   }
 
   private handleCurrentModeUpdate(update: CurrentModeUpdate): void {
+    if (this.launchOnlyConfig.mode && this.config.modeId) {
+      this.currentMode = this.config.modeId;
+      return;
+    }
     this.currentMode = this.transformModeId(update.currentModeId);
   }
 
@@ -2680,11 +2850,31 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   }
 
   private handleUsageUpdate(update: UsageUpdate): void {
-    void update;
+    const totalCostUsd =
+      update.cost?.currency.toUpperCase() === "USD" && Number.isFinite(update.cost.amount)
+        ? update.cost.amount
+        : undefined;
+    this.currentTurnUsage = {
+      ...this.currentTurnUsage,
+      contextWindowMaxTokens: update.size,
+      contextWindowUsedTokens: update.used,
+      ...(totalCostUsd === undefined ? {} : { totalCostUsd }),
+    };
+    this.refreshContextUsage();
+    this.pushEvent({
+      type: "usage_updated",
+      provider: this.provider,
+      usage: this.currentTurnUsage,
+      turnId: this.activeForegroundTurnId ?? undefined,
+    });
   }
 
   private handlePromptResponse(response: PromptResponse, turnId: string): void {
-    this.currentTurnUsage = mapACPUsage(response.usage) ?? this.currentTurnUsage;
+    const responseUsage = mapACPUsage(response.usage);
+    this.currentTurnUsage = responseUsage
+      ? { ...this.currentTurnUsage, ...responseUsage }
+      : this.currentTurnUsage;
+    this.refreshContextUsage();
 
     switch (response.stopReason) {
       case "cancelled":
@@ -2709,6 +2899,18 @@ export class ACPAgentSession implements AgentSession, ACPClient {
         });
         break;
     }
+  }
+
+  private refreshContextUsage(): void {
+    if (!this.contextUsageResolver || !this.sessionId) {
+      return;
+    }
+    this.currentTurnUsage = this.contextUsageResolver({
+      sessionId: this.sessionId,
+      cwd: this.config.cwd,
+      modelId: this.currentModel,
+      usage: this.currentTurnUsage,
+    });
   }
 
   private wrapTimeline(item: AgentTimelineItem): AgentStreamEvent {
