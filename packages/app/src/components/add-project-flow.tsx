@@ -46,6 +46,7 @@ import {
 import {
   buildAddProjectMethods,
   addProjectMethodEmptyText,
+  buildExistingProjectChoices,
   buildCloneLocationOptions,
   buildManualGithubRepositoryChoices,
   buildSuggestedParentDirectories,
@@ -71,6 +72,7 @@ import {
   useHostRuntimeClient,
   useHostRuntimeConnectionStatuses,
 } from "@/runtime/host-runtime";
+import { useHostProjects } from "@/projects/host-projects";
 import { useHostFeatureMap } from "@/runtime/host-features";
 import { useSessionStore } from "@/stores/session-store";
 import { useRecommendedProjectPaths } from "@/stores/session-store-hooks";
@@ -350,6 +352,8 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
   const client = useHostRuntimeClient(hostId ?? "");
   const isLocalDaemon = useIsLocalDaemon(hostId ?? "");
   const recommendedPaths = useRecommendedProjectPaths(hostId);
+  const projectHostIds = useMemo(() => (hostId ? [hostId] : []), [hostId]);
+  const existingProjects = useHostProjects(projectHostIds);
   const openProject = useOpenProject(hostId);
   const cloneGithubProject = useCloneGithubProject(hostId);
   const addEmptyProject = useSessionStore((store) => store.addEmptyProject);
@@ -516,6 +520,17 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
       }),
     [directoryPaths, query, recommendedPaths],
   );
+  const existingProjectChoices = useMemo(
+    () =>
+      page.kind === "directory-search" && hostId
+        ? buildExistingProjectChoices({
+            projects: existingProjects,
+            serverId: hostId,
+            query,
+          })
+        : [],
+    [existingProjects, hostId, page.kind, query],
+  );
   const cloneRepository = useCallback(
     async (locationPage: GithubLocationPage, parentPath: string) => {
       if (submissionInFlightRef.current) return;
@@ -601,17 +616,37 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
         }));
     }
     if (page.kind === "directory-search") {
-      return pathOptions.map((option) => {
-        const shortPath = shortenPath(option.path);
-        return {
-          id: option.path,
-          title: shortPath,
-          subtitle: directoryOptionSubtitle(option, shortPath),
-          icon: Folder,
-          testID: pathTestId(option.path),
-          select: () => void openAddedProject(option.path, "directory-search"),
-        };
-      });
+      const existingSourceDirectories = new Set(
+        existingProjectChoices.map((choice) => choice.sourceDirectory),
+      );
+      const existingRows = existingProjectChoices.map((choice) => ({
+        id: `existing-project:${choice.project.projectKey}`,
+        title: choice.project.projectName,
+        subtitle: `Existing project · ${shortenPath(choice.sourceDirectory)}`,
+        icon: FolderOpen,
+        testID: `add-project-flow-existing-project-${choice.project.projectKey}`,
+        select: () =>
+          openNewWorkspaceForProject(page.hostId, {
+            projectId: choice.project.projectKey,
+            projectRootPath: choice.sourceDirectory,
+            projectDisplayName: choice.project.projectName,
+            projectKind: choice.project.projectKind,
+          }),
+      }));
+      const directoryRows = pathOptions
+        .filter((option) => !existingSourceDirectories.has(option.path))
+        .map((option) => {
+          const shortPath = shortenPath(option.path);
+          return {
+            id: option.path,
+            title: shortPath,
+            subtitle: directoryOptionSubtitle(option, shortPath),
+            icon: Folder,
+            testID: pathTestId(option.path),
+            select: () => void openAddedProject(option.path, "directory-search"),
+          };
+        });
+      return [...existingRows, ...directoryRows];
     }
     if (page.kind === "github-search") {
       const search = githubQuery.data?.query === page.query ? githubQuery.data.payload : null;
@@ -679,10 +714,12 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
   }, [
     cloneRepository,
     directoryPaths,
+    existingProjectChoices,
     githubQuery.data,
     host,
     onClose,
     openAddedProject,
+    openNewWorkspaceForProject,
     page,
     pathOptions,
     recommendedPaths,
