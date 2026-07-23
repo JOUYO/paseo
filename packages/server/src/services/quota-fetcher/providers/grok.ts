@@ -17,6 +17,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const GROK_AUTH_REFRESH_TIMEOUT_MS = 10_000;
+const GROK_BILLING_FETCH_ATTEMPTS = 3;
+const GROK_BILLING_RETRY_DELAY_MS = 250;
 
 const GROK_CLI_PROXY_BASE = "https://cli-chat-proxy.grok.com";
 
@@ -136,10 +138,34 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
     };
   }
 
-  private fetchBilling(token: string): Promise<Response> {
-    return fetchProviderApi(this.fetchApi, `${GROK_CLI_PROXY_BASE}/v1/billing`, {
-      headers: this.grokAuthHeaders(token),
-    });
+  private async fetchBilling(token: string): Promise<Response> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= GROK_BILLING_FETCH_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await fetchProviderApi(
+          this.fetchApi,
+          `${GROK_CLI_PROXY_BASE}/v1/billing`,
+          {
+            headers: this.grokAuthHeaders(token),
+          },
+        );
+        if (response.ok || response.status < 500 || attempt === GROK_BILLING_FETCH_ATTEMPTS) {
+          return response;
+        }
+        this.logger.debug(
+          { status: response.status, attempt },
+          "Grok billing fetch returned a retryable status",
+        );
+      } catch (error) {
+        lastError = error;
+        if (attempt === GROK_BILLING_FETCH_ATTEMPTS || !isTransientFetchError(error)) {
+          throw error;
+        }
+        this.logger.debug({ err: error, attempt }, "Grok billing fetch failed transiently");
+      }
+      await delay(GROK_BILLING_RETRY_DELAY_MS * attempt);
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
   private async fetchPlanLabel(token: string): Promise<string | null> {
@@ -250,4 +276,36 @@ function resolveGrokAuthEntry(entry: z.infer<typeof GrokAuthEntrySchema> | null)
 async function refreshGrokCliAuth(): Promise<void> {
   // `grok models` is the official non-interactive command that performs the CLI's silent OIDC refresh.
   await execFileAsync("grok", ["models"], { timeout: GROK_AUTH_REFRESH_TIMEOUT_MS });
+}
+
+function isTransientFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  if (
+    message.includes("fetch failed") ||
+    message.includes("network") ||
+    message.includes("timeout")
+  ) {
+    return true;
+  }
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object" && "code" in cause) {
+    const code = String((cause as { code?: unknown }).code);
+    return (
+      code === "ECONNRESET" ||
+      code === "ETIMEDOUT" ||
+      code === "ECONNREFUSED" ||
+      code === "ENOTFOUND" ||
+      code === "UND_ERR_CONNECT_TIMEOUT" ||
+      code === "UND_ERR_HEADERS_TIMEOUT" ||
+      code === "UND_ERR_SOCKET"
+    );
+  }
+  return false;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((settle) => {
+    setTimeout(settle, ms);
+  });
 }

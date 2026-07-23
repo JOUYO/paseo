@@ -77,6 +77,7 @@ import {
   handleComposerKeyPress,
   shouldSubmitComposerFromNativeReturn,
 } from "./key-press";
+import { resolveComposerPrimaryButtonState, runComposerPrimaryButtonAction } from "./button-state";
 
 const DEFAULT_SEND_KEYS: ShortcutKey[][] = [["Enter"]];
 const MOD_SEND_KEYS: ShortcutKey[][] = [["mod", "Enter"]];
@@ -442,13 +443,18 @@ function SendTooltipBody({
 
 function SendButtonContent({
   isSubmitLoading,
+  isStopButton,
   submitIcon,
   buttonIconSize,
 }: {
   isSubmitLoading: boolean;
+  isStopButton: boolean;
   submitIcon: "arrow" | "return";
   buttonIconSize: number;
 }) {
+  if (isStopButton) {
+    return <View style={styles.stopIcon} />;
+  }
   if (isSubmitLoading) {
     return <ThemedActivityIndicator size="small" uniProps={iconAccentForegroundMapping} />;
   }
@@ -743,13 +749,12 @@ function VoiceButtonTooltip({
 
 function SendButtonTooltip({
   shouldShow,
-  canPressLoadingButton,
-  onSubmitLoadingPress,
-  onDefaultSendAction,
+  onPrimaryAction,
   isSendButtonDisabled,
   submitAccessibilityLabel,
   sendButtonCombinedStyle,
   isSubmitLoading,
+  isStopButton,
   submitIcon,
   submitButtonTestID,
   buttonIconSize,
@@ -757,13 +762,12 @@ function SendButtonTooltip({
   sendTooltipLabel,
 }: {
   shouldShow: boolean;
-  canPressLoadingButton: boolean;
-  onSubmitLoadingPress: (() => void) | undefined;
-  onDefaultSendAction: () => void;
+  onPrimaryAction: () => void;
   isSendButtonDisabled: boolean;
   submitAccessibilityLabel: string;
   sendButtonCombinedStyle: React.ComponentProps<typeof TooltipTrigger>["style"];
   isSubmitLoading: boolean;
+  isStopButton: boolean;
   submitIcon: "arrow" | "return";
   submitButtonTestID: string | undefined;
   buttonIconSize: number;
@@ -774,7 +778,7 @@ function SendButtonTooltip({
   return (
     <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
       <TooltipTrigger
-        onPress={canPressLoadingButton ? onSubmitLoadingPress : onDefaultSendAction}
+        onPress={onPrimaryAction}
         disabled={isSendButtonDisabled}
         accessibilityLabel={submitAccessibilityLabel}
         accessibilityRole="button"
@@ -783,6 +787,7 @@ function SendButtonTooltip({
       >
         <SendButtonContent
           isSubmitLoading={isSubmitLoading}
+          isStopButton={isStopButton}
           submitIcon={submitIcon}
           buttonIconSize={buttonIconSize}
         />
@@ -1021,30 +1026,6 @@ function getWebTextAreaImpl(
   }
   if (isTextAreaLike(current)) return current;
   return null;
-}
-
-interface SendButtonStateInput {
-  disabled: boolean;
-  isSubmitDisabled: boolean;
-  isSubmitLoading: boolean;
-  onSubmitLoadingPress: (() => void) | undefined;
-  defaultSendBehavior: "interrupt" | "queue";
-  isAgentRunning: boolean;
-}
-
-interface SendButtonStateOutput {
-  canPressLoadingButton: boolean;
-  isSendButtonDisabled: boolean;
-  defaultActionQueues: boolean;
-}
-
-function computeSendButtonState(input: SendButtonStateInput): SendButtonStateOutput {
-  const canPressLoadingButton =
-    input.isSubmitLoading && typeof input.onSubmitLoadingPress === "function";
-  const isSendButtonDisabled =
-    input.disabled || (!canPressLoadingButton && (input.isSubmitDisabled || input.isSubmitLoading));
-  const defaultActionQueues = input.defaultSendBehavior === "queue" && input.isAgentRunning;
-  return { canPressLoadingButton, isSendButtonDisabled, defaultActionQueues };
 }
 
 interface ResolvedMessageInputProps {
@@ -1585,15 +1566,30 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       sendButtonVisibility,
     });
     const effectiveIsSubmitDisabled = isSubmitDisabled || !canSubmitContent;
-    const { canPressLoadingButton, isSendButtonDisabled, defaultActionQueues } =
-      computeSendButtonState({
-        disabled,
-        isSubmitDisabled: effectiveIsSubmitDisabled,
-        isSubmitLoading,
-        onSubmitLoadingPress,
-        defaultSendBehavior,
-        isAgentRunning,
+    const primaryButtonState = resolveComposerPrimaryButtonState({
+      disabled,
+      isSubmitDisabled: effectiveIsSubmitDisabled,
+      isSubmitLoading,
+      canSubmitContent,
+      isAgentRunning,
+      canStop: typeof onSubmitLoadingPress === "function",
+      canQueue: typeof onQueue === "function",
+    });
+    const isStopButton = primaryButtonState.mode === "stop";
+    const buttonActionQueues = primaryButtonState.mode === "queue";
+    const shouldShowPrimaryButton = shouldShowSendButton || isStopButton;
+    const handlePrimaryButtonAction = useCallback(() => {
+      runComposerPrimaryButtonAction(primaryButtonState.mode, {
+        stop: () => onSubmitLoadingPress?.(),
+        queue: handleQueueMessage,
+        send: handleDefaultSendAction,
       });
+    }, [
+      handleDefaultSendAction,
+      handleQueueMessage,
+      onSubmitLoadingPress,
+      primaryButtonState.mode,
+    ]);
 
     const handleWebKeyDown = useCallback(
       (event: KeyboardEvent) => {
@@ -1686,8 +1682,8 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
     });
     const submitAccessibilityLabel = resolveSubmitAccessibilityLabel({
       submitButtonAccessibilityLabel,
-      canPressLoadingButton,
-      defaultActionQueues,
+      canPressLoadingButton: isStopButton,
+      defaultActionQueues: buttonActionQueues,
       isAgentRunning,
       t,
     });
@@ -1705,11 +1701,13 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       t,
     });
 
-    const sendTooltipLabel = resolveSendTooltipLabel({
-      submitButtonAccessibilityLabel,
-      defaultActionQueues,
-      t,
-    });
+    const sendTooltipLabel = isStopButton
+      ? t("composer.cancel.interrupt")
+      : resolveSendTooltipLabel({
+          submitButtonAccessibilityLabel,
+          defaultActionQueues: buttonActionQueues,
+          t,
+        });
 
     const handleInputChange = useCallback(
       (nextValue: string) => {
@@ -1767,8 +1765,8 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       [inputHeight, maxInputHeight],
     );
     const sendButtonCombinedStyle = useMemo(
-      () => [styles.sendButton, isSendButtonDisabled && styles.buttonDisabled],
-      [isSendButtonDisabled],
+      () => [styles.sendButton, primaryButtonState.disabled && styles.buttonDisabled],
+      [primaryButtonState.disabled],
     );
     const overlayContainerStyle = useMemo(
       () => [styles.overlayContainer, { opacity: surfacePresentation.overlay.opacity }],
@@ -1871,14 +1869,13 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
               />
               {rightContent}
               <SendButtonTooltip
-                shouldShow={shouldShowSendButton}
-                canPressLoadingButton={canPressLoadingButton}
-                onSubmitLoadingPress={onSubmitLoadingPress}
-                onDefaultSendAction={handleDefaultSendAction}
-                isSendButtonDisabled={isSendButtonDisabled}
+                shouldShow={shouldShowPrimaryButton}
+                onPrimaryAction={handlePrimaryButtonAction}
+                isSendButtonDisabled={primaryButtonState.disabled}
                 submitAccessibilityLabel={submitAccessibilityLabel}
                 sendButtonCombinedStyle={sendButtonCombinedStyle}
                 isSubmitLoading={isSubmitLoading}
+                isStopButton={isStopButton}
                 submitIcon={submitIcon}
                 submitButtonTestID={submitButtonTestID}
                 buttonIconSize={buttonIconSize}
@@ -2019,6 +2016,12 @@ const styles = StyleSheet.create((theme: Theme) => ({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: theme.spacing[1],
+  },
+  stopIcon: {
+    width: 9,
+    height: 9,
+    borderRadius: 2,
+    backgroundColor: theme.colors.accentForeground,
   },
   iconButtonHovered: {
     backgroundColor: theme.colors.surface2,
