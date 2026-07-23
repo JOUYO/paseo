@@ -48,7 +48,7 @@ import {
   FileSymlink,
 } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import type { Theme } from "@/styles/theme";
+import { FONT_SIZE, ICON_SIZE, type Theme } from "@/styles/theme";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import Animated, {
   Easing,
@@ -197,9 +197,10 @@ const WEB_TOOLCALL_SHIMMER_KEYFRAME_CSS = `
 let webToolCallShimmerRegistered = false;
 const SCROLL_EDGE_EPSILON = 0.5;
 
-// Font size for stream metadata (timestamps, durations, live elapsed timer).
-// Lives between theme.fontSize.xs (12) and theme.fontSize.sm (14); no token.
-export const STREAM_METADATA_FONT_SIZE = 13;
+// Shared font size for timestamps, durations, and the live elapsed timer.
+export const STREAM_METADATA_FONT_SIZE = FONT_SIZE.xs;
+export const STREAM_METADATA_ICON_SIZE = ICON_SIZE.xs;
+export const STREAM_METADATA_LINE_HEIGHT = 16;
 type ScrollAxis = "x" | "y";
 
 function ensureWebToolCallShimmerKeyframes() {
@@ -335,7 +336,8 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
   },
   content: {
     alignItems: "flex-end",
-    maxWidth: "100%",
+    maxWidth: "92%",
+    minWidth: 0,
     cursor: "auto",
   },
   containerSpacing: {
@@ -349,17 +351,32 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
   },
   bubble: {
     backgroundColor: theme.colors.surface3,
-    borderRadius: theme.borderRadius["2xl"],
+    borderRadius: theme.borderRadius.lg,
     borderTopRightRadius: theme.borderRadius.sm,
-    paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[3],
     minWidth: 0,
+    maxWidth: "100%",
     flexShrink: 1,
+  },
+  bubbleWithText: {
+    paddingBottom: 0,
   },
   text: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
-    ...(isWeb ? { lineHeight: 22, overflowWrap: "anywhere" as const } : {}),
+    ...(isWeb
+      ? {
+          lineHeight: 22,
+          overflowWrap: "anywhere" as const,
+          wordBreak: "break-word" as const,
+        }
+      : {}),
+  },
+  markdownContainer: {
+    width: "100%",
+    minWidth: 0,
+    flexShrink: 1,
   },
   imagePreviewContainer: {
     flexDirection: "row",
@@ -376,17 +393,17 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
   },
   copyButton: {
     alignSelf: "center",
-    padding: theme.spacing[1],
-    paddingTop: theme.spacing[1],
+    padding: 2,
+    paddingTop: 2,
     marginTop: 0,
-    marginRight: -theme.spacing[1],
+    marginRight: -2,
   },
   trailingRow: {
     alignSelf: "flex-end",
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing[2],
-    marginTop: theme.spacing[2],
+    gap: theme.spacing[1],
+    marginTop: theme.spacing[1],
   },
   trailingRowHidden: {
     opacity: 0,
@@ -397,6 +414,7 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
   timestampText: {
     color: theme.colors.foregroundMuted,
     fontSize: STREAM_METADATA_FONT_SIZE,
+    lineHeight: STREAM_METADATA_LINE_HEIGHT,
   },
 }));
 
@@ -491,6 +509,10 @@ export const UserMessage = memo(function UserMessage({
     ],
     [showTrailingRow],
   );
+  const bubbleStyle = useMemo(
+    () => [userMessageStylesheet.bubble, hasText ? userMessageStylesheet.bubbleWithText : null],
+    [hasText],
+  );
 
   return (
     <View style={containerStyle} testID="user-message">
@@ -499,7 +521,7 @@ export const UserMessage = memo(function UserMessage({
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
       >
-        <View style={userMessageStylesheet.bubble}>
+        <View style={bubbleStyle}>
           {hasImages ? (
             <View style={imagePreviewContainerStyle}>
               {images.map((image) => (
@@ -531,9 +553,9 @@ export const UserMessage = memo(function UserMessage({
             </View>
           ) : null}
           {hasText ? (
-            <Text selectable style={userMessageStylesheet.text}>
-              {message}
-            </Text>
+            <View style={userMessageStylesheet.markdownContainer}>
+              <MarkdownRenderer text={message} />
+            </View>
           ) : null}
         </View>
         {hasText ? (
@@ -571,14 +593,14 @@ const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing[2],
+    gap: theme.spacing[1],
   },
   copyButton: {
     alignSelf: "center",
-    padding: theme.spacing[1],
-    paddingTop: theme.spacing[1],
+    padding: 2,
+    paddingTop: 2,
     marginTop: 0,
-    marginLeft: -theme.spacing[1],
+    marginLeft: -2,
   },
   labelWrapper: {
     position: "relative",
@@ -586,6 +608,7 @@ const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
   labelSizer: {
     color: theme.colors.foregroundMuted,
     fontSize: STREAM_METADATA_FONT_SIZE,
+    lineHeight: STREAM_METADATA_LINE_HEIGHT,
     opacity: 0,
   },
   labelOverlay: {
@@ -594,6 +617,7 @@ const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
     left: 0,
     color: theme.colors.foregroundMuted,
     fontSize: STREAM_METADATA_FONT_SIZE,
+    lineHeight: STREAM_METADATA_LINE_HEIGHT,
   },
 }));
 
@@ -662,13 +686,17 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
       <TurnCopyButton
         getContent={getContent}
         containerStyle={assistantTurnFooterStylesheet.copyButton}
+        iconSize={STREAM_METADATA_ICON_SIZE}
       />
-      {canFork ? <AssistantForkMenu onFork={handleFork} /> : null}
+      {canFork ? (
+        <AssistantForkMenu onFork={handleFork} iconSize={STREAM_METADATA_ICON_SIZE} />
+      ) : null}
       {durationLabel ? (
         <Pressable
           onPress={handlePress}
           onHoverIn={handleHoverIn}
           onHoverOut={handleHoverOut}
+          hitSlop={8}
           accessibilityRole={canSwap ? "button" : undefined}
           accessibilityLabel={canSwap ? `${durationLabel}, ended ${timestampLabel}` : durationLabel}
         >
@@ -738,7 +766,8 @@ interface AssistantMessageProps {
 
 export const assistantMessageStylesheet = StyleSheet.create((theme) => ({
   container: {
-    paddingVertical: theme.spacing[3],
+    paddingTop: 0,
+    paddingBottom: 0,
     ...(isWeb ? { userSelect: "text" as const } : {}),
   },
   containerCompactTop: {
@@ -746,6 +775,9 @@ export const assistantMessageStylesheet = StyleSheet.create((theme) => ({
   },
   containerCompactBottom: {
     paddingBottom: 0,
+  },
+  blockSpacing: {
+    marginBottom: theme.spacing[2],
   },
   imageFrame: {
     width: "100%",
@@ -1110,9 +1142,9 @@ function nodeHasParentType(parent: unknown, type: string): boolean {
 const turnCopyButtonStylesheet = StyleSheet.create((theme) => ({
   container: {
     alignSelf: "flex-start",
-    padding: theme.spacing[2],
+    padding: theme.spacing[1],
     paddingTop: 0,
-    marginTop: theme.spacing[2],
+    marginTop: theme.spacing[1],
   },
   iconColor: {
     color: theme.colors.foregroundMuted,
@@ -1127,6 +1159,7 @@ interface TurnCopyButtonProps {
   containerStyle?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   copiedAccessibilityLabel?: string;
+  iconSize?: number;
 }
 
 export const TurnCopyButton = memo(function TurnCopyButton({
@@ -1134,6 +1167,7 @@ export const TurnCopyButton = memo(function TurnCopyButton({
   containerStyle,
   accessibilityLabel,
   copiedAccessibilityLabel,
+  iconSize = ICON_SIZE.sm,
 }: TurnCopyButtonProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -1187,9 +1221,9 @@ export const TurnCopyButton = memo(function TurnCopyButton({
           ? turnCopyButtonStylesheet.iconHoveredColor.color
           : turnCopyButtonStylesheet.iconColor.color;
         return copied ? (
-          <Check size={16} color={iconColor} />
+          <Check size={iconSize} color={iconColor} />
         ) : (
-          <Copy size={16} color={iconColor} />
+          <Copy size={iconSize} color={iconColor} />
         );
       }}
     </Pressable>
@@ -1197,25 +1231,21 @@ export const TurnCopyButton = memo(function TurnCopyButton({
 });
 
 const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
-  container: {
-    marginHorizontal: -13,
-  },
   containerSpacing: {
-    marginBottom: theme.spacing[1],
+    marginBottom: 2,
   },
   containerLastInSequence: {
-    marginBottom: theme.spacing[4],
+    marginBottom: theme.spacing[3],
   },
   pressable: {
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth[1],
-    borderColor: "transparent",
-    paddingHorizontal: theme.spacing[2],
+    minHeight: 34,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: 0,
     paddingVertical: theme.spacing[1],
     overflow: "hidden",
   },
   pressablePressed: {
-    opacity: 0.9,
+    opacity: 0.72,
   },
   headerRow: {
     flexDirection: "row",
@@ -1226,20 +1256,23 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "center",
     overflow: "hidden",
+    gap: theme.spacing[1],
   },
   iconBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: theme.spacing[1],
     backgroundColor: "transparent",
   },
   label: {
     color: theme.colors.foregroundMuted,
+    fontFamily: theme.fontFamily.ui,
     fontSize: theme.fontSize.base,
+    lineHeight: 22,
     fontWeight: theme.fontWeight.normal,
+    letterSpacing: 0,
     flexShrink: 0,
   },
   labelActive: {
@@ -1253,9 +1286,12 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     flexShrink: 1,
     minWidth: 0,
     color: theme.colors.foregroundMuted,
+    fontFamily: theme.fontFamily.ui,
     fontSize: theme.fontSize.base,
+    lineHeight: 22,
     fontWeight: theme.fontWeight.normal,
-    marginLeft: theme.spacing[2],
+    letterSpacing: 0,
+    marginLeft: 0,
   },
   secondaryLabelActive: {
     color: theme.colors.foreground,
@@ -1263,6 +1299,7 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
   shimmerText: {
     color: "transparent",
     fontSize: theme.fontSize.base,
+    lineHeight: 22,
     fontWeight: theme.fontWeight.normal,
   },
   spacer: {
@@ -1461,16 +1498,16 @@ function NativeShimmerPeakSvg({ gradientId }: { gradientId: string }) {
 
 interface AssistantMessageBlockContainerProps {
   block: string;
-  marginBottom: number;
+  hasSpacingBelow: boolean;
   children: ReactNode;
 }
 
 function AssistantMessageBlockContainer({
   block,
-  marginBottom,
+  hasSpacingBelow,
   children,
 }: AssistantMessageBlockContainerProps) {
-  const style = useMemo(() => (marginBottom > 0 ? { marginBottom } : undefined), [marginBottom]);
+  const style = hasSpacingBelow ? assistantMessageStylesheet.blockSpacing : undefined;
   const handleLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
@@ -1940,7 +1977,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         <AssistantMessageBlockContainer
           key={key}
           block={block}
-          marginBottom={index < keyedBlocks.length - 1 ? 12 : 0}
+          hasSpacingBelow={index < keyedBlocks.length - 1}
         >
           <MemoizedMarkdownBlock
             text={block}
@@ -2907,7 +2944,6 @@ export const ExpandableBadge = memo(function ExpandableBadge({
 
   const containerStyle = useMemo(
     () => [
-      expandableBadgeStylesheet.container,
       !resolvedDisableOuterSpacing &&
         (isLastInSequence
           ? expandableBadgeStylesheet.containerLastInSequence

@@ -17,6 +17,7 @@ export type AssistantForkTarget = "tab" | "workspace";
 interface AssistantForkMenuProps {
   onFork: (target: AssistantForkTarget) => Promise<void> | void;
   testID?: string;
+  iconSize?: number;
 }
 
 const ThemedSplit = withUnistyles(Split);
@@ -27,6 +28,7 @@ const foregroundMutedColorMapping = (theme: Theme) => ({ color: theme.colors.for
 export const AssistantForkMenu = memo(function AssistantForkMenu({
   onFork,
   testID = "assistant-fork-menu",
+  iconSize = 14,
 }: AssistantForkMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -69,7 +71,10 @@ export const AssistantForkMenu = memo(function AssistantForkMenu({
     [t],
   );
 
-  const forkIcon = useMemo(() => <ThemedSplit size={16} uniProps={foregroundColorMapping} />, []);
+  const forkIcon = useMemo(
+    () => <ThemedSplit size={iconSize} uniProps={foregroundColorMapping} />,
+    [iconSize],
+  );
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
@@ -85,7 +90,7 @@ export const AssistantForkMenu = memo(function AssistantForkMenu({
             >
               {({ hovered, open }) => (
                 <ThemedSplit
-                  size={16}
+                  size={iconSize}
                   uniProps={hovered || open ? foregroundColorMapping : foregroundMutedColorMapping}
                 />
               )}
@@ -122,7 +127,7 @@ export const AssistantForkMenu = memo(function AssistantForkMenu({
 
 const styles = StyleSheet.create((theme) => ({
   trigger: {
-    padding: theme.spacing[1],
+    padding: 2,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
