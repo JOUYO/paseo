@@ -1,22 +1,34 @@
+import { execFile } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
 import type { Logger } from "pino";
 import { z } from "zod";
 import type { ProviderUsage, ProviderUsageBalance } from "../../../server/messages.js";
+import { expandTilde } from "../../../utils/path.js";
 import type { ProviderApiFetch, ProviderUsageFetcher } from "../provider.js";
 import {
   ApiNumberSchema,
-  toneFromUsedPct,
-  usedPctOf,
+  balanceToneFromRemaining,
   fetchProviderApi,
   unavailableUsage,
 } from "../usage.js";
+
+const execFileAsync = promisify(execFile);
+const GROK_AUTH_REFRESH_TIMEOUT_MS = 10_000;
+
+const GROK_CLI_PROXY_BASE = "https://cli-chat-proxy.grok.com";
 
 const GrokUsageResponseSchema = z.object({
   config: z
     .object({
       monthlyLimit: z
+        .object({
+          val: ApiNumberSchema.optional(),
+        })
+        .nullish(),
+      used: z
         .object({
           val: ApiNumberSchema.optional(),
         })
@@ -30,13 +42,35 @@ const GrokUsageResponseSchema = z.object({
     .nullish(),
 });
 
-const GrokAuthSchema = z.object({
-  access_token: z.string().optional(),
+const GrokSettingsResponseSchema = z.object({
+  subscription_tier_display: z.string().trim().min(1).optional(),
 });
+
+const GrokAuthEntrySchema = z.object({
+  access_token: z.string().trim().min(1).optional(),
+  key: z.string().trim().min(1).optional(),
+  email: z.string().trim().email().optional(),
+  first_name: z.string().trim().min(1).optional(),
+  last_name: z.string().trim().min(1).optional(),
+  principal_type: z.string().trim().min(1).optional(),
+  expires_at: z.string().trim().min(1).optional(),
+  refresh_token: z.string().trim().min(1).optional(),
+});
+const GrokAuthStoreSchema = z.record(z.string(), GrokAuthEntrySchema);
+
+interface GrokAuth {
+  token: string;
+  details: NonNullable<ProviderUsage["details"]>;
+  expiresAt: string | null;
+  canRefresh: boolean;
+}
 
 interface GrokQuotaProviderOptions {
   logger: Logger;
   fetch?: ProviderApiFetch;
+  grokHome?: string;
+  refreshAuth?: () => Promise<void>;
+  now?: () => number;
 }
 
 export class GrokQuotaProvider implements ProviderUsageFetcher {
@@ -45,29 +79,36 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
 
   private readonly logger: Logger;
   private readonly fetchApi: ProviderApiFetch;
+  private readonly grokHome: string;
+  private readonly refreshAuth: () => Promise<void>;
+  private readonly now: () => number;
 
   constructor(options: GrokQuotaProviderOptions) {
     this.logger = options.logger;
     this.fetchApi = options.fetch ?? fetch;
+    this.grokHome = resolveGrokHome(options.grokHome);
+    this.refreshAuth = options.refreshAuth ?? refreshGrokCliAuth;
+    this.now = options.now ?? Date.now;
   }
 
   async fetchUsage(): Promise<ProviderUsage> {
-    const token =
-      process.env["GROK_API_KEY"] || process.env["GROK_TOKEN"] || (await this.readGrokToken());
+    const environmentToken = process.env["GROK_API_KEY"] || process.env["GROK_TOKEN"];
+    let storedAuth = await this.readGrokAuth();
+    if (!environmentToken && storedAuth && this.isExpired(storedAuth.expiresAt)) {
+      storedAuth = await this.refreshStoredAuth();
+    }
+
+    let token = environmentToken || storedAuth?.token;
 
     if (!token) return unavailableUsage(this);
 
-    const res = await fetchProviderApi(
-      this.fetchApi,
-      "https://cli-chat-proxy.grok.com/v1/billing",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-XAI-Token-Auth": "xai-grok-cli",
-          Accept: "application/json",
-        },
-      },
-    );
+    let res = await this.fetchBilling(token);
+    if (!environmentToken && res.status === 401 && storedAuth?.canRefresh) {
+      storedAuth = await this.refreshStoredAuth();
+      token = storedAuth?.token;
+      if (!token) return unavailableUsage(this);
+      res = await this.fetchBilling(token);
+    }
 
     if (!res.ok) {
       this.logger.debug({ status: res.status }, "Grok usage fetch failed");
@@ -75,45 +116,138 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
     }
 
     const resp = GrokUsageResponseSchema.parse(await res.json());
-    const monthlyLimit = resp.config?.monthlyLimit?.val ?? null;
-    const creditUsage = resp.usage?.creditUsage ?? null;
-    const balances: ProviderUsageBalance[] = [];
-    if (monthlyLimit !== null || creditUsage !== null) {
-      const remaining =
-        monthlyLimit !== null && creditUsage !== null
-          ? Math.max(0, monthlyLimit - creditUsage)
-          : null;
-      balances.push({
-        id: "monthly_credits",
-        label: "Monthly credits",
-        used: creditUsage,
-        remaining,
-        limit: monthlyLimit,
-        unit: "credits",
-        tone: toneFromUsedPct(usedPctOf(creditUsage, monthlyLimit)),
-      });
-    }
-
     return {
       providerId: this.providerId,
       displayName: this.displayName,
       status: "available",
-      planLabel: null,
+      planLabel: await this.fetchPlanLabel(token),
       windows: [],
-      balances,
-      details: [],
+      balances: resolveGrokBalances(resp),
+      details: storedAuth?.details ?? [],
       error: null,
     };
   }
 
-  private async readGrokToken(): Promise<string | null> {
-    const path = join(homedir(), ".grok", "auth.json");
+  private grokAuthHeaders(token: string): Record<string, string> {
+    return {
+      Authorization: `Bearer ${token}`,
+      "X-XAI-Token-Auth": "xai-grok-cli",
+      Accept: "application/json",
+    };
+  }
+
+  private fetchBilling(token: string): Promise<Response> {
+    return fetchProviderApi(this.fetchApi, `${GROK_CLI_PROXY_BASE}/v1/billing`, {
+      headers: this.grokAuthHeaders(token),
+    });
+  }
+
+  private async fetchPlanLabel(token: string): Promise<string | null> {
+    try {
+      const res = await fetchProviderApi(this.fetchApi, `${GROK_CLI_PROXY_BASE}/v1/settings`, {
+        headers: this.grokAuthHeaders(token),
+      });
+      if (!res.ok) return null;
+      const settings = GrokSettingsResponseSchema.safeParse(await res.json());
+      return settings.success ? (settings.data.subscription_tier_display ?? null) : null;
+    } catch (error) {
+      this.logger.debug({ err: error }, "Grok subscription plan fetch failed");
+      return null;
+    }
+  }
+
+  private async refreshStoredAuth(): Promise<GrokAuth | null> {
+    try {
+      await this.refreshAuth();
+      return this.readGrokAuth();
+    } catch (error) {
+      this.logger.debug({ err: error }, "Grok CLI credential refresh failed");
+      return null;
+    }
+  }
+
+  private isExpired(expiresAt: string | null): boolean {
+    if (!expiresAt) return false;
+    const expiresAtMs = Date.parse(expiresAt);
+    return Number.isFinite(expiresAtMs) && expiresAtMs <= this.now();
+  }
+
+  private async readGrokAuth(): Promise<GrokAuth | null> {
+    const path = join(this.grokHome, "auth.json");
     if (!existsSync(path)) return null;
     try {
-      const auth = GrokAuthSchema.parse(JSON.parse(await fs.readFile(path, "utf8")));
-      return auth.access_token ?? null;
+      const auth = JSON.parse(await fs.readFile(path, "utf8"));
+      const directEntry = GrokAuthEntrySchema.safeParse(auth);
+      const directAuth = resolveGrokAuthEntry(directEntry.success ? directEntry.data : null);
+      if (directAuth) return directAuth;
+
+      const store = GrokAuthStoreSchema.safeParse(auth);
+      if (!store.success) return null;
+      for (const entry of Object.values(store.data)) {
+        const entryAuth = resolveGrokAuthEntry(entry);
+        if (entryAuth) return entryAuth;
+      }
+      return null;
     } catch {
       return null;
     }
   }
+}
+
+function resolveGrokBalances(
+  response: z.infer<typeof GrokUsageResponseSchema>,
+): ProviderUsageBalance[] {
+  const monthlyLimit = response.config?.monthlyLimit?.val ?? null;
+  const creditUsage = response.config?.used?.val ?? response.usage?.creditUsage ?? null;
+  if (monthlyLimit === null && creditUsage === null) return [];
+
+  const remaining =
+    monthlyLimit !== null && creditUsage !== null ? Math.max(0, monthlyLimit - creditUsage) : null;
+  return [
+    {
+      id: "monthly_credits",
+      label: "Monthly credits",
+      used: creditUsage,
+      remaining,
+      limit: monthlyLimit,
+      unit: "credits",
+      tone: balanceToneFromRemaining(remaining),
+    },
+  ];
+}
+
+function resolveGrokHome(configuredHome: string | undefined): string {
+  const grokHome = configuredHome ?? process.env["GROK_HOME"];
+  return grokHome ? resolve(expandTilde(grokHome)) : join(homedir(), ".grok");
+}
+
+function resolveGrokAuthEntry(entry: z.infer<typeof GrokAuthEntrySchema> | null): GrokAuth | null {
+  if (!entry) return null;
+
+  const token = entry.access_token ?? entry.key;
+  if (!token) return null;
+
+  const displayName = [entry.first_name, entry.last_name].filter(Boolean).join(" ");
+  const details: NonNullable<ProviderUsage["details"]> = [];
+  if (entry.email) {
+    details.push({ id: "account_email", label: "Account email", value: entry.email });
+  }
+  if (displayName) {
+    details.push({ id: "account_name", label: "Account", value: displayName });
+  }
+  if (entry.principal_type) {
+    details.push({ id: "account_type", label: "Account type", value: entry.principal_type });
+  }
+
+  return {
+    token,
+    details,
+    expiresAt: entry.expires_at ?? null,
+    canRefresh: Boolean(entry.refresh_token),
+  };
+}
+
+async function refreshGrokCliAuth(): Promise<void> {
+  // `grok models` is the official non-interactive command that performs the CLI's silent OIDC refresh.
+  await execFileAsync("grok", ["models"], { timeout: GROK_AUTH_REFRESH_TIMEOUT_MS });
 }
