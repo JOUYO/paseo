@@ -61,7 +61,6 @@ import { getForgePresentation } from "@/git/forge";
 import type { CreateAgentInitialValues } from "@/hooks/use-agent-form-state";
 import { generateMessageId } from "@/types/stream";
 import { toErrorMessage } from "@/utils/error-messages";
-import { projectIconPlaceholderLabelFromDisplayName } from "@/utils/project-display-name";
 import {
   getHostProjectSourceDirectory,
   hostProjectFromRoute,
@@ -180,7 +179,6 @@ interface PickerOptionData {
 
 const BRANCH_OPTION_PREFIX = "branch:";
 const PR_OPTION_PREFIX = "github-pr:";
-const PROJECT_ICON_FALLBACK_FONT_SIZE = 10;
 // Height of a single picker-trigger badge. The Base-row spacer reserves exactly
 // this so toggling Isolation to Local hides the row without shifting the form.
 const BADGE_HEIGHT = 28;
@@ -284,8 +282,6 @@ function ProjectPickerTrigger({
   iconSize: number;
 }) {
   const { t } = useTranslation();
-  const placeholderLabel = projectIconPlaceholderLabelFromDisplayName(label);
-  const placeholderInitial = placeholderLabel.charAt(0).toUpperCase() || "?";
   return (
     <Tooltip>
       <TooltipTrigger asChild triggerRefProp="ref">
@@ -302,11 +298,9 @@ function ProjectPickerTrigger({
             {projectKey ? (
               <ProjectIconView
                 iconDataUri={iconDataUri}
-                initial={placeholderInitial}
-                projectKey={projectKey}
                 imageStyle={styles.projectIcon}
                 fallbackStyle={styles.projectIconFallback}
-                textStyle={styles.projectIconFallbackText}
+                iconSize={iconSize}
               />
             ) : (
               <Folder size={iconSize} color={iconColor} />
@@ -419,7 +413,6 @@ function IsolationOptionItem({
 
 function ProjectOptionItem({
   testID,
-  projectKey,
   iconDataUri,
   label,
   description,
@@ -429,7 +422,6 @@ function ProjectOptionItem({
   onPress,
 }: {
   testID: string;
-  projectKey: string;
   iconDataUri: string | null;
   label: string;
   description: string | undefined;
@@ -438,22 +430,18 @@ function ProjectOptionItem({
   disabled: boolean;
   onPress: () => void;
 }) {
-  const placeholderLabel = projectIconPlaceholderLabelFromDisplayName(label);
-  const placeholderInitial = placeholderLabel.charAt(0).toUpperCase() || "?";
   const leadingSlot = useMemo(
     () => (
       <View style={styles.rowIconBox}>
         <ProjectIconView
           iconDataUri={iconDataUri}
-          initial={placeholderInitial}
-          projectKey={projectKey}
           imageStyle={styles.projectIcon}
           fallbackStyle={styles.projectIconFallback}
-          textStyle={styles.projectIconFallbackText}
+          iconSize={ICON_SIZE.sm}
         />
       </View>
     ),
-    [iconDataUri, placeholderInitial, projectKey],
+    [iconDataUri],
   );
 
   return (
@@ -552,7 +540,6 @@ function NewWorkspaceProjectPickerOption({
   return (
     <ProjectOptionItem
       testID={`new-workspace-project-picker-option-${project.projectKey}`}
-      projectKey={project.projectKey}
       iconDataUri={projectIconDataByProjectKey.get(project.projectKey) ?? null}
       label={project.projectName}
       description={sourceDirectory}
@@ -2271,12 +2258,6 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.borderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-  },
-  projectIconFallbackText: {
-    // Single uppercase initial inside an iconSize.md (16px) square — below the
-    // smallest font-size token, so it stays a literal sized to the box.
-    fontSize: PROJECT_ICON_FALLBACK_FONT_SIZE,
-    fontWeight: "600",
   },
   rowIconBox: {
     width: theme.iconSize.md,

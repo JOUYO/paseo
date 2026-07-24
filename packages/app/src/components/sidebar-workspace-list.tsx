@@ -37,8 +37,6 @@ import { DiffStat } from "@/components/diff-stat";
 import {
   CircleAlert,
   ExternalLink,
-  Folder,
-  FolderOpen,
   Settings,
   MoreVertical,
   Plus,
@@ -141,8 +139,6 @@ const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedActivityIndicator = withUnistyles(ActivityIndicator);
 const ThemedCircleAlert = withUnistyles(CircleAlert);
 const ThemedSyncedLoader = withUnistyles(SyncedLoader);
-const ThemedFolder = withUnistyles(Folder);
-const ThemedFolderOpen = withUnistyles(FolderOpen);
 const ThemedPlus = withUnistyles(Plus);
 const ThemedMoreVertical = withUnistyles(MoreVertical);
 const ThemedTrash2 = withUnistyles(Trash2);
@@ -332,14 +328,12 @@ function ProjectLeadingVisual({
   iconDataUri,
   showProjectIcon,
   workspace,
-  projectKey,
   chevron = null,
   isArchiving = false,
 }: {
   iconDataUri: string | null;
   showProjectIcon: boolean;
   workspace: SidebarWorkspaceEntry | null;
-  projectKey: string;
   chevron?: "expand" | "collapse" | null;
   isArchiving?: boolean;
 }) {
@@ -358,7 +352,7 @@ function ProjectLeadingVisual({
     }
     return (
       <View style={styles.projectLeadingVisualSlot}>
-        <ProjectIcon iconDataUri={iconDataUri} projectKey={projectKey} expanded={expanded} />
+        <ProjectIcon iconDataUri={iconDataUri} expanded={expanded} />
       </View>
     );
   }
@@ -366,7 +360,6 @@ function ProjectLeadingVisual({
   return (
     <ProjectLeadingVisualStatus
       iconDataUri={iconDataUri}
-      projectKey={projectKey}
       expanded={expanded}
       showProjectIcon={showProjectIcon}
       isArchiving={isArchiving}
@@ -601,43 +594,20 @@ function WorkspaceRowRightGroup({
   );
 }
 
-function ProjectIcon({
-  iconDataUri,
-  projectKey,
-  expanded,
-}: {
-  iconDataUri: string | null;
-  projectKey: string;
-  expanded: boolean;
-}) {
-  if (iconDataUri) {
-    return (
-      <ProjectIconView
-        iconDataUri={iconDataUri}
-        initial=""
-        projectKey={projectKey}
-        imageStyle={styles.projectIcon}
-        fallbackStyle={styles.projectIconFallback}
-        textStyle={styles.projectIconFallbackText}
-      />
-    );
-  }
-
-  // Outline folder glyphs — closed when collapsed, open when expanded.
+function ProjectIcon({ iconDataUri, expanded }: { iconDataUri: string | null; expanded: boolean }) {
   return (
-    <View style={styles.projectIconFallback}>
-      {expanded ? (
-        <ThemedFolderOpen size={14} uniProps={foregroundMutedColorMapping} />
-      ) : (
-        <ThemedFolder size={14} uniProps={foregroundMutedColorMapping} />
-      )}
-    </View>
+    <ProjectIconView
+      iconDataUri={iconDataUri}
+      imageStyle={styles.projectIcon}
+      fallbackStyle={styles.projectIconFallback}
+      expanded={expanded}
+      iconSize={14}
+    />
   );
 }
 
 function ProjectLeadingVisualStatus({
   iconDataUri,
-  projectKey,
   expanded,
   showProjectIcon,
   isArchiving,
@@ -645,7 +615,6 @@ function ProjectLeadingVisualStatus({
   activeWorkspace,
 }: {
   iconDataUri: string | null;
-  projectKey: string;
   expanded: boolean;
   showProjectIcon: boolean;
   isArchiving: boolean;
@@ -703,7 +672,7 @@ function ProjectLeadingVisualStatus({
 
   return (
     <View style={styles.projectLeadingVisualSlot}>
-      <ProjectIcon iconDataUri={iconDataUri} projectKey={projectKey} expanded={expanded} />
+      <ProjectIcon iconDataUri={iconDataUri} expanded={expanded} />
       {dotColorStyle ? (
         <StatusDotOverlay
           dotColorStyle={dotColorStyle}
@@ -937,7 +906,6 @@ function ProjectHeaderRow({
           iconDataUri={iconDataUri}
           showProjectIcon={showProjectIcon}
           workspace={workspace}
-          projectKey={project.projectKey}
           chevron={chevron}
           isArchiving={isArchiving}
         />
@@ -2486,9 +2454,6 @@ const styles = StyleSheet.create((theme) => ({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-  },
-  projectIconFallbackText: {
-    fontSize: 9,
   },
   projectTitle: {
     color: theme.colors.foreground,
