@@ -429,6 +429,8 @@ interface ACPAgentClientOptions {
   clientCapabilities?: ACPClientCapabilities;
   clientCapabilityMeta?: ACPClientCapabilityMeta;
   modeIdTransformer?: (modeId: string) => string | null;
+  /** Return `null` to suppress the user-message timeline item entirely. */
+  userMessageTextTransformer?: (text: string) => string | null;
   toolSnapshotTransformer?: (snapshot: ACPToolSnapshot) => ACPToolSnapshot;
   providerModeWriter?: (
     context: ACPProviderModeWriterContext,
@@ -465,6 +467,8 @@ interface ACPAgentSessionOptions {
   clientCapabilities?: ACPClientCapabilities;
   clientCapabilityMeta?: ACPClientCapabilityMeta;
   modeIdTransformer?: (modeId: string) => string | null;
+  /** Return `null` to suppress the user-message timeline item entirely. */
+  userMessageTextTransformer?: (text: string) => string | null;
   toolSnapshotTransformer?: (snapshot: ACPToolSnapshot) => ACPToolSnapshot;
   providerModeWriter?: (
     context: ACPProviderModeWriterContext,
@@ -782,6 +786,7 @@ export class ACPAgentClient implements AgentClient {
   private readonly clientCapabilities?: ACPClientCapabilities;
   private readonly clientCapabilityMeta?: ACPClientCapabilityMeta;
   private readonly modeIdTransformer?: (modeId: string) => string | null;
+  private readonly userMessageTextTransformer?: (text: string) => string | null;
   private readonly toolSnapshotTransformer?: (snapshot: ACPToolSnapshot) => ACPToolSnapshot;
   private readonly providerModeWriter?: (
     context: ACPProviderModeWriterContext,
@@ -824,6 +829,7 @@ export class ACPAgentClient implements AgentClient {
     this.clientCapabilities = options.clientCapabilities;
     this.clientCapabilityMeta = options.clientCapabilityMeta;
     this.modeIdTransformer = options.modeIdTransformer;
+    this.userMessageTextTransformer = options.userMessageTextTransformer;
     this.toolSnapshotTransformer = options.toolSnapshotTransformer;
     this.providerModeWriter = options.providerModeWriter;
     this.beforeModeWriter = options.beforeModeWriter;
@@ -859,6 +865,7 @@ export class ACPAgentClient implements AgentClient {
         clientCapabilities: this.clientCapabilities,
         clientCapabilityMeta: this.clientCapabilityMeta,
         modeIdTransformer: this.modeIdTransformer,
+        userMessageTextTransformer: this.userMessageTextTransformer,
         toolSnapshotTransformer: this.toolSnapshotTransformer,
         providerModeWriter: this.providerModeWriter,
         beforeModeWriter: this.beforeModeWriter,
@@ -915,6 +922,7 @@ export class ACPAgentClient implements AgentClient {
       clientCapabilities: this.clientCapabilities,
       clientCapabilityMeta: this.clientCapabilityMeta,
       modeIdTransformer: this.modeIdTransformer,
+      userMessageTextTransformer: this.userMessageTextTransformer,
       toolSnapshotTransformer: this.toolSnapshotTransformer,
       providerModeWriter: this.providerModeWriter,
       beforeModeWriter: this.beforeModeWriter,
@@ -1423,6 +1431,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
   private readonly clientCapabilities?: ACPClientCapabilities;
   private readonly clientCapabilityMeta?: ACPClientCapabilityMeta;
   private readonly modeIdTransformer?: (modeId: string) => string | null;
+  private readonly userMessageTextTransformer?: (text: string) => string | null;
   private readonly toolSnapshotTransformer?: (snapshot: ACPToolSnapshot) => ACPToolSnapshot;
   private readonly providerModeWriter?: (
     context: ACPProviderModeWriterContext,
@@ -1495,6 +1504,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
     this.clientCapabilities = options.clientCapabilities;
     this.clientCapabilityMeta = options.clientCapabilityMeta;
     this.modeIdTransformer = options.modeIdTransformer;
+    this.userMessageTextTransformer = options.userMessageTextTransformer;
     this.toolSnapshotTransformer = options.toolSnapshotTransformer;
     this.providerModeWriter = options.providerModeWriter;
     this.beforeModeWriter = options.beforeModeWriter;
@@ -2801,10 +2811,16 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       return [];
     }
     this.pendingUserMessage = null;
+    const text = this.userMessageTextTransformer
+      ? this.userMessageTextTransformer(pending.text)
+      : pending.text;
+    if (text == null || text.length === 0) {
+      return [];
+    }
     return [
       this.wrapTimeline({
         type: "user_message",
-        text: pending.text,
+        text,
         ...(pending.messageId ? { messageId: pending.messageId } : {}),
       }),
     ];

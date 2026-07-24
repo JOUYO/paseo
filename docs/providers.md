@@ -100,6 +100,19 @@ The context-window meter is separate from plan usage. It reads `AgentUsage.conte
 - **Cursor / OpenCode** — resolve max from catalog model metadata; used tokens arrive from ACP context updates.
 - **Codex** — the app-server's `thread/tokenUsage/updated` notification is unreliable across CLI versions and the model list carries no context window, so `codex/context-usage.ts` reads the latest `token_count` event from the session rollout `.jsonl` (`~/.codex/sessions/{date}/rollout-{ts}-{id}.jsonl`) as the authoritative fallback. It reads only a bounded tail of the file (rollouts can reach hundreds of MB) and merges `model_context_window` + `last_token_usage.total_tokens` into `lastUsage` on connect (reopened sessions) and turn completion. `toAgentUsage` accepts both the flat and `info`-wrapped shapes.
 
+### Grok ACP message envelopes
+
+Grok injects model-facing XML into the ACP user/tool channels. `GrokACPAgentClient` normalizes these before they hit the timeline (`grok-message-tags.ts`):
+
+| Envelope                                           | Treatment                                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `<system-reminder>`, `<user_info>`, `<git_status>` | Hide when they are the whole message; strip when prefixed onto a real prompt |
+| `<user_query>`                                     | Unwrap; show the inner text                                                  |
+| `<spoken-input>` / `<instruction>`                 | Unwrap spoken text; drop the instruction block                               |
+| `<workspace_result>` (tool output)                 | Unwrap via `toolSnapshotTransformer`                                         |
+
+Hook points on the ACP base: `userMessageTextTransformer` (return `null` to suppress) and `toolSnapshotTransformer`.
+
 ---
 
 ## ACP Provider Checklist

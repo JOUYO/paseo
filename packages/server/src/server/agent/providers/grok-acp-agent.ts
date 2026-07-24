@@ -9,6 +9,7 @@ import type {
 import type { AvailableACPModel } from "./acp-agent.js";
 import { GenericACPAgentClient } from "./generic-acp-agent.js";
 import { createGrokContextUsageResolver, resolveGrokHome } from "./grok-context-usage.js";
+import { normalizeGrokUserMessageText, transformGrokToolSnapshot } from "./grok-message-tags.js";
 
 const GROK_CONTEXT_WINDOW_FALLBACKS: Record<string, number> = {
   "grok-4.5": 500_000,
@@ -137,6 +138,8 @@ export class GrokACPAgentClient extends GenericACPAgentClient {
         thinkingOption: true,
       },
       persistenceMetadata: () => ({ grokHome: resolveGrokHome(options.env) }),
+      userMessageTextTransformer: normalizeGrokUserMessageText,
+      toolSnapshotTransformer: transformGrokToolSnapshot,
     });
   }
 }

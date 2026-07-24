@@ -16,6 +16,7 @@ import {
   type ACPLaunchOnlyConfig,
   type ACPModelDefinitionTransformer,
   type ACPSessionLaunchArgsPlacement,
+  type ACPToolSnapshot,
   DEFAULT_ACP_CAPABILITIES,
   type ACPExtensionCommandsParser,
 } from "./acp-agent.js";
@@ -66,6 +67,8 @@ interface GenericACPAgentClientOptions {
   autoApprovePermissionModes?: readonly string[];
   launchOnlyConfig?: ACPLaunchOnlyConfig;
   persistenceMetadata?: (config: AgentSessionConfig) => AgentMetadata;
+  userMessageTextTransformer?: (text: string) => string | null;
+  toolSnapshotTransformer?: (snapshot: ACPToolSnapshot) => ACPToolSnapshot;
 }
 
 export class GenericACPAgentClient extends ACPAgentClient {
@@ -91,6 +94,8 @@ export class GenericACPAgentClient extends ACPAgentClient {
       autoApprovePermissionModes: options.autoApprovePermissionModes,
       launchOnlyConfig: options.launchOnlyConfig,
       persistenceMetadata: options.persistenceMetadata,
+      userMessageTextTransformer: options.userMessageTextTransformer,
+      toolSnapshotTransformer: options.toolSnapshotTransformer,
       capabilities: buildGenericACPCapabilities(providerParams),
       waitForInitialCommands: options.waitForInitialCommands,
       initialCommandsWaitTimeoutMs: options.initialCommandsWaitTimeoutMs,
