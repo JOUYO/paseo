@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createCompactMarkdownStyles, createMarkdownStyles } from "./markdown-styles";
+import {
+  createCompactMarkdownStyles,
+  createMarkdownStyles,
+  createThinkingMarkdownStyles,
+} from "./markdown-styles";
 import { darkTheme } from "./theme";
 
 describe("createMarkdownStyles", () => {
@@ -67,6 +71,22 @@ describe("createMarkdownStyles", () => {
     });
     expect(styles.ordered_list_icon).toMatchObject({
       userSelect: "text",
+    });
+  });
+
+  it("keeps thinking prose on the reply line-height with muted color and tight paragraphs", () => {
+    const styles = createThinkingMarkdownStyles(darkTheme);
+
+    expect(styles.body).toMatchObject({
+      color: darkTheme.colors.foregroundMuted,
+      fontSize: darkTheme.fontSize.base,
+      lineHeight: Math.round(darkTheme.fontSize.base * 1.4),
+    });
+    expect(styles.text).toMatchObject({
+      color: darkTheme.colors.foregroundMuted,
+    });
+    expect(styles.paragraph).toMatchObject({
+      marginBottom: darkTheme.spacing[1],
     });
   });
 

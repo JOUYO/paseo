@@ -18,6 +18,7 @@ import { hasMeaningfulToolCallDetail } from "@/utils/tool-call-detail-state";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { CODE_SURFACE_DATASET } from "@/styles/code-surface";
 import { extensionFromPath, highlightToKeyedLines } from "@/utils/highlight-cache";
+import { BiAxisCodeScroll } from "./bi-axis-code-scroll";
 import { HighlightedLines } from "./highlighted-content";
 import { DiffViewer } from "./diff-viewer";
 import { getCodeInsets } from "./code-insets";
@@ -33,6 +34,8 @@ interface ToolCallDetailsContentProps {
   maxHeight?: number;
   fillAvailableHeight?: boolean;
   showLoadingSkeleton?: boolean;
+  /** "flat" drops the bordered surface used by code/tool cards (e.g. thinking). */
+  chrome?: "card" | "flat";
 }
 
 interface DetailStyles {
@@ -156,27 +159,18 @@ function ShellDetailSection({ command, output, ds }: ShellDetailProps) {
   return (
     <View style={ds.sectionFillStyle}>
       <View style={ds.codeBlockFillStyle}>
-        <ScrollView
+        <BiAxisCodeScroll
           style={ds.codeVerticalScrollStyle}
-          contentContainerStyle={styles.codeVerticalContent}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
+          contentContainerStyle={[styles.codeVerticalContent, styles.codeHorizontalContent]}
         >
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator
-            contentContainerStyle={styles.codeHorizontalContent}
-          >
-            <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
-              <Text selectable style={styles.scrollText}>
-                <Text style={styles.shellPrompt}>$ </Text>
-                {normalizedCommand}
-                {hasOutput ? `\n\n${commandOutput}` : ""}
-              </Text>
-            </View>
-          </ScrollView>
-        </ScrollView>
+          <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
+            <Text selectable style={styles.scrollText}>
+              <Text style={styles.shellPrompt}>$ </Text>
+              {normalizedCommand}
+              {hasOutput ? `\n\n${commandOutput}` : ""}
+            </Text>
+          </View>
+        </BiAxisCodeScroll>
       </View>
     </View>
   );
@@ -200,25 +194,16 @@ function WorktreeSetupDetailSection({
   return (
     <View style={ds.sectionFillStyle}>
       <View style={ds.codeBlockFillStyle}>
-        <ScrollView
+        <BiAxisCodeScroll
           style={ds.codeVerticalScrollStyle}
-          contentContainerStyle={styles.codeVerticalContent}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
+          contentContainerStyle={[styles.codeVerticalContent, styles.codeHorizontalContent]}
         >
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator
-            contentContainerStyle={styles.codeHorizontalContent}
-          >
-            <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
-              <Text selectable style={styles.scrollText}>
-                {hasLog ? setupLog : `Preparing worktree ${branchName} at ${worktreePath}`}
-              </Text>
-            </View>
-          </ScrollView>
-        </ScrollView>
+          <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
+            <Text selectable style={styles.scrollText}>
+              {hasLog ? setupLog : `Preparing worktree ${branchName} at ${worktreePath}`}
+            </Text>
+          </View>
+        </BiAxisCodeScroll>
       </View>
     </View>
   );
@@ -364,39 +349,30 @@ function SubAgentDetailSection({
   return (
     <View style={ds.sectionFillStyle}>
       <View style={ds.codeBlockFillStyle}>
-        <ScrollView
+        <BiAxisCodeScroll
           style={ds.codeVerticalScrollStyle}
-          contentContainerStyle={styles.codeVerticalContent}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
+          contentContainerStyle={[styles.codeVerticalContent, styles.codeHorizontalContent]}
         >
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator
-            contentContainerStyle={styles.codeHorizontalContent}
-          >
-            <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
-              {childSessionId ? (
-                <Text selectable style={styles.subAgentSessionText}>
-                  session {childSessionId}
-                </Text>
-              ) : null}
-              {hasActions ? (
-                <View style={styles.subAgentActions}>
-                  {actions.map((action) => (
-                    <SubAgentActionRow key={action.index} action={action} />
-                  ))}
-                </View>
-              ) : null}
-              <SubAgentLogText
-                activityLog={remainingLog}
-                fallbackHeader={fallbackHeader}
-                hasActions={hasActions}
-              />
-            </View>
-          </ScrollView>
-        </ScrollView>
+          <View style={styles.codeLine} dataSet={CODE_SURFACE_DATASET}>
+            {childSessionId ? (
+              <Text selectable style={styles.subAgentSessionText}>
+                session {childSessionId}
+              </Text>
+            ) : null}
+            {hasActions ? (
+              <View style={styles.subAgentActions}>
+                {actions.map((action) => (
+                  <SubAgentActionRow key={action.index} action={action} />
+                ))}
+              </View>
+            ) : null}
+            <SubAgentLogText
+              activityLog={remainingLog}
+              fallbackHeader={fallbackHeader}
+              hasActions={hasActions}
+            />
+          </View>
+        </BiAxisCodeScroll>
       </View>
     </View>
   );
@@ -444,22 +420,15 @@ function ScrollableTextSection({
     [content, filePath],
   );
   const body = (
-    <ScrollView
-      style={ds.scrollAreaFillStyle}
-      contentContainerStyle={styles.scrollContent}
-      nestedScrollEnabled
-      showsVerticalScrollIndicator={true}
-    >
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={true}>
-        {keyedLines ? (
-          <HighlightedLines lines={keyedLines} startLine={startLine} />
-        ) : (
-          <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
-            {content}
-          </Text>
-        )}
-      </ScrollView>
-    </ScrollView>
+    <BiAxisCodeScroll style={ds.scrollAreaFillStyle} contentContainerStyle={styles.scrollContent}>
+      {keyedLines ? (
+        <HighlightedLines lines={keyedLines} startLine={startLine} />
+      ) : (
+        <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
+          {content}
+        </Text>
+      )}
+    </BiAxisCodeScroll>
   );
   if (!wrapInSectionFill) return body;
   return <View style={ds.sectionFillStyle}>{body}</View>;
@@ -474,32 +443,37 @@ interface FetchDetailProps {
 function FetchDetailSection({ url, result, ds }: FetchDetailProps) {
   return (
     <View style={ds.sectionFillStyle}>
-      <ScrollView
-        style={ds.scrollAreaFillStyle}
-        contentContainerStyle={styles.scrollContent}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
-      >
-        <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
-          <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
-            {result ? `${url}\n\n${result}` : url}
-          </Text>
-        </ScrollView>
-      </ScrollView>
+      <BiAxisCodeScroll style={ds.scrollAreaFillStyle} contentContainerStyle={styles.scrollContent}>
+        <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
+          {result ? `${url}\n\n${result}` : url}
+        </Text>
+      </BiAxisCodeScroll>
     </View>
   );
 }
 
-function ScrollablePlainTextSection({ text, ds }: { text: string; ds: DetailStyles }) {
+function ScrollablePlainTextSection({
+  text,
+  ds,
+  chrome = "card",
+}: {
+  text: string;
+  ds: DetailStyles;
+  chrome?: "card" | "flat";
+}) {
+  const isFlat = chrome === "flat";
   return (
     <View style={styles.section}>
       <ScrollView
-        style={ds.scrollAreaStyle}
-        contentContainerStyle={styles.scrollContent}
+        style={isFlat ? styles.flatScrollArea : ds.scrollAreaStyle}
+        contentContainerStyle={isFlat ? styles.flatScrollContent : styles.scrollContent}
         nestedScrollEnabled
         showsVerticalScrollIndicator
       >
-        <Text selectable style={styles.plainText}>
+        <Text
+          selectable
+          style={isFlat ? [styles.plainText, styles.flatPlainText] : styles.plainText}
+        >
           {text}
         </Text>
       </ScrollView>
@@ -520,18 +494,11 @@ function buildSearchSections(detail: SearchDetail, ds: DetailStyles): ReactNode[
   if (detail.content) {
     out.push(
       <View key="search-content" style={styles.section}>
-        <ScrollView
-          style={ds.scrollAreaStyle}
-          contentContainerStyle={styles.scrollContent}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
-        >
-          <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator>
-            <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
-              {detail.content}
-            </Text>
-          </ScrollView>
-        </ScrollView>
+        <BiAxisCodeScroll style={ds.scrollAreaStyle} contentContainerStyle={styles.scrollContent}>
+          <Text selectable style={styles.scrollText} dataSet={CODE_SURFACE_DATASET}>
+            {detail.content}
+          </Text>
+        </BiAxisCodeScroll>
       </View>,
     );
   }
@@ -578,12 +545,24 @@ interface UnknownDetail {
   output: unknown;
 }
 
-function buildUnknownSections(detail: UnknownDetail, ds: DetailStyles, t: TFunction): ReactNode[] {
+function buildUnknownSections(
+  detail: UnknownDetail,
+  ds: DetailStyles,
+  t: TFunction,
+  chrome: "card" | "flat",
+): ReactNode[] {
   const plainInputText =
     typeof detail.input === "string" && detail.output === null ? detail.input : null;
 
   if (plainInputText !== null) {
-    return [<ScrollablePlainTextSection key="unknown-plain-text" text={plainInputText} ds={ds} />];
+    return [
+      <ScrollablePlainTextSection
+        key="unknown-plain-text"
+        text={plainInputText}
+        ds={ds}
+        chrome={chrome}
+      />,
+    ];
   }
 
   const sectionsFromTopLevel = [
@@ -632,6 +611,7 @@ function buildDetailSections(
   diffLines: DiffLine[] | undefined,
   ds: DetailStyles,
   t: TFunction,
+  chrome: "card" | "flat",
 ): ReactNode[] {
   if (!detail) return [];
   if (detail.type === "shell") {
@@ -699,10 +679,12 @@ function buildDetailSections(
   }
   if (detail.type === "plain_text") {
     if (!detail.text) return [];
-    return [<ScrollablePlainTextSection key="plain-text" text={detail.text} ds={ds} />];
+    return [
+      <ScrollablePlainTextSection key="plain-text" text={detail.text} ds={ds} chrome={chrome} />,
+    ];
   }
   if (detail.type === "unknown") {
-    return buildUnknownSections(detail, ds, t);
+    return buildUnknownSections(detail, ds, t, chrome);
   }
   return [];
 }
@@ -755,13 +737,14 @@ function ToolCallDetailsContentInner({
   maxHeight,
   fillAvailableHeight = false,
   showLoadingSkeleton = false,
+  chrome = "card",
 }: ToolCallDetailsContentProps) {
   const { t } = useTranslation();
   const resolvedMaxHeight = fillAvailableHeight ? undefined : (maxHeight ?? 300);
   const ds = useDetailStyles(detail, resolvedMaxHeight, fillAvailableHeight);
   const diffLines = useDiffLines(detail);
 
-  const sections: ReactNode[] = buildDetailSections(detail, diffLines, ds, t);
+  const sections: ReactNode[] = buildDetailSections(detail, diffLines, ds, t, chrome);
 
   if (errorText) {
     sections.push(<ErrorSection key="error" errorText={errorText} ds={ds} />);
@@ -816,8 +799,12 @@ const styles = StyleSheet.create((theme) => {
       fontFamily: theme.fontFamily.ui,
       fontSize: theme.fontSize.base,
       color: theme.colors.foreground,
-      lineHeight: 22,
+      // Match assistant markdown body (base * 1.4) so flat/card prose share one rhythm.
+      lineHeight: Math.round(theme.fontSize.base * 1.4),
       overflowWrap: "anywhere",
+    },
+    flatPlainText: {
+      color: theme.colors.foregroundMuted,
     },
     sectionTitle: {
       color: theme.colors.foregroundMuted,
@@ -862,8 +849,19 @@ const styles = StyleSheet.create((theme) => {
       borderRadius: theme.borderRadius.base,
       backgroundColor: theme.colors.surface2,
     },
+    flatScrollArea: {
+      borderWidth: 0,
+      backgroundColor: "transparent",
+    },
     scrollContent: {
       padding: insets.padding,
+    },
+    // Flat (thinking) body sits flush with the stream — no icon-rail indent.
+    flatScrollContent: {
+      paddingTop: theme.spacing[1],
+      paddingBottom: theme.spacing[1],
+      paddingLeft: 0,
+      paddingRight: 0,
     },
     scrollText: {
       fontFamily: theme.fontFamily.mono,

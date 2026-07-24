@@ -223,4 +223,33 @@ describe("GrokQuotaProvider", () => {
     });
     expect(billingCalls).toBe(3);
   });
+
+  test("surfaces a clear error when billing stays unreachable", async () => {
+    const grokHome = await createGrokHome();
+    await fs.writeFile(
+      path.join(grokHome, "auth.json"),
+      JSON.stringify({
+        "https://auth.x.ai::account": {
+          key: "grok_cli_token",
+          email: "person@example.test",
+        },
+      }),
+    );
+    const fetchApi = vi.fn(async () => {
+      throw new TypeError("fetch failed", { cause: { code: "ECONNRESET" } });
+    }) as unknown as typeof fetch;
+    const provider = new GrokQuotaProvider({
+      logger: createTestLogger(),
+      fetch: fetchApi,
+      grokHome,
+      proxyBaseUrl: "https://proxy.example.test/v1",
+    });
+
+    await expect(provider.fetchUsage()).resolves.toMatchObject({
+      status: "error",
+      details: [{ id: "account_email", value: "person@example.test" }],
+      error: expect.stringContaining("Couldn't reach Grok billing API"),
+    });
+    expect(fetchApi.mock.calls[0]?.[0]).toBe("https://proxy.example.test/v1/billing");
+  });
 });

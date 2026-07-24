@@ -56,14 +56,16 @@ export function getGapBetweenStreamItems(
   if (item.kind === "user_message" && isToolSequenceItem(belowItem)) {
     return STREAM_ITEM_GAP.turn;
   }
+  // Keep reply-internal process rows and assistant prose on the same continuous
+  // rhythm so thinking → speak/assistant does not open a blank-line-sized gap.
   if (item.kind === "assistant_message" && isToolSequenceItem(belowItem)) {
-    return STREAM_ITEM_GAP.related;
+    return STREAM_ITEM_GAP.continuous;
   }
   if (isToolSequenceItem(item) && belowItem.kind === "assistant_message") {
-    return STREAM_ITEM_GAP.related;
+    return STREAM_ITEM_GAP.continuous;
   }
   if (isSameAssistantBlockGroup({ item, other: belowItem })) {
-    return STREAM_ITEM_GAP.related;
+    return STREAM_ITEM_GAP.continuous;
   }
   return STREAM_ITEM_GAP.turn;
 }

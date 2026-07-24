@@ -3233,8 +3233,8 @@ function WorkspaceScreenContent({
     if (!isRouteFocused || isNative || typeof document === "undefined" || activeTabDescriptor) {
       return;
     }
-    document.title = "Workspace";
-  }, [activeTabDescriptor, isRouteFocused]);
+    document.title = t("workspace.route.browserTabTitle");
+  }, [activeTabDescriptor, isRouteFocused, t]);
   const buildPaneContentModel = useCallback(
     (input: {
       tab: WorkspaceTabDescriptor;
@@ -3887,7 +3887,11 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 1,
   },
   headerTitleContainer: {
-    flex: 1,
+    // Shrink-only: the parent `left` slot in ScreenHeader already grows to
+    // reserve the row's remaining width (via justifyContent: "space-between"
+    // against `right`). Growing here too left a large dead strip of header
+    // background between the kebab menu and the right-side controls.
+    flexGrow: 0,
     flexShrink: 1,
     minWidth: 0,
     flexDirection: "row",
@@ -3902,10 +3906,9 @@ const styles = StyleSheet.create((theme) => ({
     minWidth: 0,
     overflow: "hidden",
     flexShrink: 1,
-    flexGrow: {
-      xs: 1,
-      md: 0,
-    },
+    // Keep the kebab next to the title. Growing this group on compact widths
+    // pushed the menu to the far edge of the header (large empty gap).
+    flexGrow: 0,
     flexDirection: {
       xs: "column",
       md: "row",
@@ -3967,6 +3970,7 @@ const styles = StyleSheet.create((theme) => ({
   compactHeaderMenuCluster: {
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 0,
     gap: {
       xs: 0,
       md: theme.spacing[2],

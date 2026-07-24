@@ -642,6 +642,7 @@ function MobileSidebar({
     }),
     [insetsTop, insetsBottom, theme.colors.surfaceSidebar],
   );
+  const workspacesSectionHeader = useMemo(() => <WorkspacesSectionHeader />, []);
 
   return (
     <MobilePanelOverlay
@@ -714,7 +715,7 @@ function MobileSidebar({
             onWorkspacePress={handleWorkspacePress}
             onAddProject={handleOpenProject}
             parentGestureRef={closeGestureRef}
-            listHeaderComponent={workspacesSectionHeaderElement}
+            listHeaderComponent={workspacesSectionHeader}
           />
         )}
 
@@ -821,6 +822,7 @@ function DesktopSidebar({
     () => [styles.sidebarHeaderGroup, ownsTopLeft && styles.sidebarHeaderGroupBelowChrome],
     [ownsTopLeft],
   );
+  const workspacesSectionHeader = useMemo(() => <WorkspacesSectionHeader />, []);
   return (
     <Animated.View
       accessibilityElementsHidden={!active}
@@ -879,7 +881,7 @@ function DesktopSidebar({
             isRefreshing={isManualRefresh && isRevalidating}
             onRefresh={handleRefresh}
             onAddProject={handleOpenProject}
-            listHeaderComponent={workspacesSectionHeaderElement}
+            listHeaderComponent={workspacesSectionHeader}
           />
         )}
 
@@ -906,6 +908,7 @@ function DesktopSidebar({
 }
 
 function WorkspacesSectionHeader() {
+  const { t } = useTranslation();
   const { theme } = useUnistyles();
   const setCommandCenterOpen = useKeyboardShortcutsStore((state) => state.setCommandCenterOpen);
   const commandCenterKeys = useShortcutKeys("toggle-command-center");
@@ -920,13 +923,13 @@ function WorkspacesSectionHeader() {
 
   return (
     <View style={styles.workspacesSectionHeader}>
-      <Text style={styles.workspacesSectionTitle}>Workspaces</Text>
+      <Text style={styles.workspacesSectionTitle}>{t("sidebar.workspace.sectionTitle")}</Text>
       <View style={styles.workspacesSectionActions}>
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Open command center"
+              accessibilityLabel={t("sidebar.workspace.openCommandCenter")}
               testID="sidebar-command-center-search"
               style={searchButtonStyle}
               onPress={handleSearchPress}
@@ -942,7 +945,10 @@ function WorkspacesSectionHeader() {
             </Pressable>
           </TooltipTrigger>
           <TooltipContent side="bottom" align="center" offset={8}>
-            <IconTooltipContent label="Search" shortcutKeys={commandCenterKeys} />
+            <IconTooltipContent
+              label={t("sidebar.workspace.searchTooltip")}
+              shortcutKeys={commandCenterKeys}
+            />
           </TooltipContent>
         </Tooltip>
         <Tooltip delayDuration={300}>
@@ -952,17 +958,13 @@ function WorkspacesSectionHeader() {
             </View>
           </TooltipTrigger>
           <TooltipContent side="bottom" align="center" offset={8}>
-            <IconTooltipContent label="Display preferences" />
+            <IconTooltipContent label={t("sidebar.workspace.displayPreferences")} />
           </TooltipContent>
         </Tooltip>
       </View>
     </View>
   );
 }
-
-// Stable element so the sidebar list's listHeaderComponent prop keeps identity across
-// renders (WorkspacesSectionHeader takes no props).
-const workspacesSectionHeaderElement = <WorkspacesSectionHeader />;
 
 // Static styles for Animated.Views — must NOT use Unistyles dynamic theme to
 // avoid the "Unable to find node on an unmounted component" crash when Unistyles

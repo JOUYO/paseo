@@ -20,7 +20,9 @@ const GROK_AUTH_REFRESH_TIMEOUT_MS = 10_000;
 const GROK_BILLING_FETCH_ATTEMPTS = 3;
 const GROK_BILLING_RETRY_DELAY_MS = 250;
 
-const GROK_CLI_PROXY_BASE = "https://cli-chat-proxy.grok.com";
+const DEFAULT_GROK_CLI_PROXY_BASE = "https://cli-chat-proxy.grok.com";
+const GROK_NETWORK_ERROR_MESSAGE =
+  "Couldn't reach Grok billing API. Check that cli-chat-proxy.grok.com is reachable (proxy/VPN rules often block it).";
 
 const GrokUsageResponseSchema = z.object({
   config: z
@@ -71,6 +73,8 @@ interface GrokQuotaProviderOptions {
   logger: Logger;
   fetch?: ProviderApiFetch;
   grokHome?: string;
+  /** Override for tests / `GROK_CLI_CHAT_PROXY_BASE_URL`. */
+  proxyBaseUrl?: string;
   refreshAuth?: () => Promise<void>;
   now?: () => number;
 }
@@ -82,6 +86,7 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
   private readonly logger: Logger;
   private readonly fetchApi: ProviderApiFetch;
   private readonly grokHome: string;
+  private readonly proxyBaseUrl: string;
   private readonly refreshAuth: () => Promise<void>;
   private readonly now: () => number;
 
@@ -89,6 +94,7 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
     this.logger = options.logger;
     this.fetchApi = options.fetch ?? fetch;
     this.grokHome = resolveGrokHome(options.grokHome);
+    this.proxyBaseUrl = resolveGrokCliProxyBase(options.proxyBaseUrl);
     this.refreshAuth = options.refreshAuth ?? refreshGrokCliAuth;
     this.now = options.now ?? Date.now;
   }
@@ -101,33 +107,85 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
     }
 
     let token = environmentToken || storedAuth?.token;
-
     if (!token) return unavailableUsage(this);
 
-    let res = await this.fetchBilling(token);
-    if (!environmentToken && res.status === 401 && storedAuth?.canRefresh) {
-      storedAuth = await this.refreshStoredAuth();
-      token = storedAuth?.token;
-      if (!token) return unavailableUsage(this);
-      res = await this.fetchBilling(token);
-    }
+    try {
+      const billing = await this.fetchBillingWithAuthRetry({
+        token,
+        environmentToken: Boolean(environmentToken),
+        canRefresh: Boolean(storedAuth?.canRefresh),
+      });
+      if (!billing.ok) {
+        this.logger.debug({ status: billing.status }, "Grok usage fetch failed");
+        return unavailableUsage(this);
+      }
+      token = billing.token;
+      storedAuth = billing.storedAuth ?? storedAuth;
 
-    if (!res.ok) {
-      this.logger.debug({ status: res.status }, "Grok usage fetch failed");
-      return unavailableUsage(this);
+      const resp = GrokUsageResponseSchema.parse(await billing.response.json());
+      return {
+        providerId: this.providerId,
+        displayName: this.displayName,
+        status: "available",
+        planLabel: await this.fetchPlanLabel(token),
+        windows: [],
+        balances: resolveGrokBalances(resp),
+        details: storedAuth?.details ?? [],
+        error: null,
+      };
+    } catch (error) {
+      if (!isTransientFetchError(error)) throw error;
+      this.logger.debug({ err: error, proxyBaseUrl: this.proxyBaseUrl }, "Grok usage fetch failed");
+      return this.networkErrorUsage(storedAuth?.details ?? []);
     }
+  }
 
-    const resp = GrokUsageResponseSchema.parse(await res.json());
+  private networkErrorUsage(details: NonNullable<ProviderUsage["details"]>): ProviderUsage {
     return {
       providerId: this.providerId,
       displayName: this.displayName,
-      status: "available",
-      planLabel: await this.fetchPlanLabel(token),
+      status: "error",
+      planLabel: null,
       windows: [],
-      balances: resolveGrokBalances(resp),
-      details: storedAuth?.details ?? [],
-      error: null,
+      balances: [],
+      details,
+      error: GROK_NETWORK_ERROR_MESSAGE,
     };
+  }
+
+  private async fetchBillingWithAuthRetry(input: {
+    token: string;
+    environmentToken: boolean;
+    canRefresh: boolean;
+  }): Promise<{
+    ok: boolean;
+    status: number;
+    token: string;
+    response: Response;
+    storedAuth: GrokAuth | null;
+  }> {
+    let token = input.token;
+    let storedAuth: GrokAuth | null = null;
+    let response = await this.fetchBilling(token);
+    if (!input.environmentToken && response.status === 401 && input.canRefresh) {
+      storedAuth = await this.refreshStoredAuth();
+      token = storedAuth?.token ?? "";
+      if (!token) {
+        return { ok: false, status: 401, token, response, storedAuth };
+      }
+      response = await this.fetchBilling(token);
+    }
+    return {
+      ok: response.ok,
+      status: response.status,
+      token,
+      response,
+      storedAuth,
+    };
+  }
+
+  private billingUrl(path: string): string {
+    return `${this.proxyBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   }
 
   private grokAuthHeaders(token: string): Record<string, string> {
@@ -142,13 +200,9 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
     let lastError: unknown;
     for (let attempt = 1; attempt <= GROK_BILLING_FETCH_ATTEMPTS; attempt += 1) {
       try {
-        const response = await fetchProviderApi(
-          this.fetchApi,
-          `${GROK_CLI_PROXY_BASE}/v1/billing`,
-          {
-            headers: this.grokAuthHeaders(token),
-          },
-        );
+        const response = await fetchProviderApi(this.fetchApi, this.billingUrl("/v1/billing"), {
+          headers: this.grokAuthHeaders(token),
+        });
         if (response.ok || response.status < 500 || attempt === GROK_BILLING_FETCH_ATTEMPTS) {
           return response;
         }
@@ -170,7 +224,7 @@ export class GrokQuotaProvider implements ProviderUsageFetcher {
 
   private async fetchPlanLabel(token: string): Promise<string | null> {
     try {
-      const res = await fetchProviderApi(this.fetchApi, `${GROK_CLI_PROXY_BASE}/v1/settings`, {
+      const res = await fetchProviderApi(this.fetchApi, this.billingUrl("/v1/settings"), {
         headers: this.grokAuthHeaders(token),
       });
       if (!res.ok) return null;
@@ -245,6 +299,14 @@ function resolveGrokBalances(
 function resolveGrokHome(configuredHome: string | undefined): string {
   const grokHome = configuredHome ?? process.env["GROK_HOME"];
   return grokHome ? resolve(expandTilde(grokHome)) : join(homedir(), ".grok");
+}
+
+function resolveGrokCliProxyBase(configuredBase: string | undefined): string {
+  const raw =
+    configuredBase ?? process.env["GROK_CLI_CHAT_PROXY_BASE_URL"] ?? DEFAULT_GROK_CLI_PROXY_BASE;
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  // CLI env docs use either origin or origin+/v1; normalize to origin.
+  return trimmed.endsWith("/v1") ? trimmed.slice(0, -3) : trimmed;
 }
 
 function resolveGrokAuthEntry(entry: z.infer<typeof GrokAuthEntrySchema> | null): GrokAuth | null {

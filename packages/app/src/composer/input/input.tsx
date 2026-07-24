@@ -1919,26 +1919,18 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   inputWrapper: {
     flexDirection: "column",
-    gap: theme.spacing[3],
+    gap: theme.spacing[2],
     backgroundColor: theme.colors.surface1,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.borderAccent,
-    borderRadius: theme.borderRadius["2xl"],
+    borderRadius: theme.borderRadius.lg,
+    overflow: "hidden",
     paddingVertical: {
       xs: theme.spacing[2],
-      md: theme.spacing[4],
+      md: theme.spacing[2],
     },
     paddingHorizontal: {
       xs: theme.spacing[3],
-      md: theme.spacing[4],
+      md: theme.spacing[3],
     },
-    ...(isWeb
-      ? {
-          transitionProperty: "border-color",
-          transitionDuration: "200ms",
-          transitionTimingFunction: "ease-in-out",
-        }
-      : {}),
   },
   textInputScrollWrapper: {
     position: "relative",
@@ -1962,6 +1954,7 @@ const styles = StyleSheet.create((theme: Theme) => ({
           outlineStyle: "none",
           outlineWidth: 0,
           outlineColor: "transparent",
+          scrollbarGutter: "stable",
         } as object)
       : {}),
   },
@@ -1969,7 +1962,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginHorizontal: -6,
   },
   leftButtonGroup: {
     minWidth: 0,

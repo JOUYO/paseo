@@ -88,6 +88,8 @@ import { useAppDiagnosticStore } from "@/diagnostics/store";
 import { settingsStyles } from "@/styles/settings";
 import { THINKING_TONE_NATIVE_PCM_BASE64 } from "@/utils/thinking-tone.native-pcm";
 import { useVoiceAudioEngineOptional } from "@/contexts/voice-context";
+import { isWeb } from "@/constants/platform";
+import { sendOsNotification } from "@/utils/os-notifications";
 import {
   LANGUAGE_OPTIONS,
   formatLanguageOptionLabel,
@@ -138,6 +140,7 @@ interface SidebarSectionItem {
   labelKey: string;
   icon: ComponentType<{ size: number; color: string }>;
   desktopOnly?: boolean;
+  webOnly?: boolean;
 }
 
 const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
@@ -155,7 +158,7 @@ const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
     id: "permissions",
     labelKey: "settings.sections.permissions",
     icon: Shield,
-    desktopOnly: true,
+    webOnly: true,
   },
   { id: "diagnostics", labelKey: "settings.sections.diagnostics", icon: Stethoscope },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -518,9 +521,37 @@ function DiagnosticsSection({
 }: DiagnosticsSectionProps) {
   const { t } = useTranslation();
   const openAppDiagnostic = useAppDiagnosticStore((state) => state.open);
+  const [isNotificationTestRunning, setIsNotificationTestRunning] = useState(false);
+  const [notificationTestResult, setNotificationTestResult] = useState<string | null>(null);
   const handlePlayPress = useCallback(() => {
     void handlePlaybackTest();
   }, [handlePlaybackTest]);
+  const handleNotificationTest = useCallback(async () => {
+    if (!isWeb || isNotificationTestRunning) {
+      return;
+    }
+
+    setIsNotificationTestRunning(true);
+    setNotificationTestResult(null);
+    try {
+      const sent = await sendOsNotification({
+        title: t("desktop.permissions.testNotification.title"),
+        body: t("desktop.permissions.testNotification.body"),
+      });
+      setNotificationTestResult(
+        sent
+          ? t("settings.diagnostics.notification.sent")
+          : t("settings.diagnostics.notification.notDelivered"),
+      );
+    } catch {
+      setNotificationTestResult(t("settings.diagnostics.notification.failed"));
+    } finally {
+      setIsNotificationTestRunning(false);
+    }
+  }, [isNotificationTestRunning, t]);
+  const handleNotificationTestPress = useCallback(() => {
+    void handleNotificationTest();
+  }, [handleNotificationTest]);
   return (
     <SettingsSection title={t("settings.diagnostics.title")}>
       <View style={settingsStyles.card}>
@@ -533,6 +564,28 @@ function DiagnosticsSection({
             {t("settings.diagnostics.app.run")}
           </Button>
         </View>
+        {isWeb ? (
+          <View style={settingsStyles.row} testID="notification-diagnostic-row">
+            <View style={settingsStyles.rowContent}>
+              <Text style={settingsStyles.rowTitle}>
+                {t("settings.diagnostics.notification.rowTitle")}
+              </Text>
+              <Text style={settingsStyles.rowHint}>
+                {notificationTestResult ?? t("settings.diagnostics.notification.rowHint")}
+              </Text>
+            </View>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={handleNotificationTestPress}
+              disabled={isNotificationTestRunning}
+            >
+              {isNotificationTestRunning
+                ? t("settings.diagnostics.notification.sending")
+                : t("settings.diagnostics.notification.sendTest")}
+            </Button>
+          </View>
+        ) : null}
         <View style={settingsStyles.row}>
           <View style={settingsStyles.rowContent}>
             <Text style={settingsStyles.rowTitle}>{t("settings.diagnostics.testAudio")}</Text>
@@ -1054,7 +1107,11 @@ function SettingsSidebar({
   const hasHosts = sortedHosts.length > 0;
   const enableBuiltInDaemonOption = useEnableBuiltInDaemonOption();
   const isDesktopApp = isElectronRuntime();
-  const items = SIDEBAR_SECTION_ITEMS.filter((item) => !item.desktopOnly || isDesktopApp);
+  const items = SIDEBAR_SECTION_ITEMS.filter((item) => {
+    const supportsDesktopFeature = !item.desktopOnly || isDesktopApp;
+    const supportsWebFeature = !item.webOnly || isWeb;
+    return supportsDesktopFeature && supportsWebFeature;
+  });
   const insets = useSafeAreaInsets();
   const isDesktop = layout === "desktop";
   const outerContainerStyle = useMemo(
@@ -1487,7 +1544,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
         case "integrations":
           return isDesktopApp ? <IntegrationsSection /> : null;
         case "permissions":
-          return isDesktopApp ? <DesktopPermissionsSection /> : null;
+          return isWeb ? <DesktopPermissionsSection /> : null;
         case "diagnostics":
           return (
             <DiagnosticsSection

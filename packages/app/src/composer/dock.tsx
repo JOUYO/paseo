@@ -1,5 +1,5 @@
 import { useMemo, type PropsWithChildren } from "react";
-import { type LayoutChangeEvent } from "react-native";
+import { StyleSheet as RNStyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
@@ -40,22 +40,27 @@ export function ComposerDock({ compact, onLayout, children }: ComposerDockProps)
     bottom: isWeb && compact ? -iosWebMetrics.dockFillDepth.value : 0,
   }));
 
-  const dockStyle = useMemo(() => [styles.dock, dockPositionStyle], [dockPositionStyle]);
-  const fillStyle = useMemo(() => [styles.fill, dockFillStyle], [dockFillStyle]);
+  // Keep Unistyles theme colors off Animated.View — theme toggle + Reanimated
+  // crash with "Unable to find node on an unmounted component" (docs/unistyles.md).
+  const dockStyle = useMemo(() => [staticStyles.dock, dockPositionStyle], [dockPositionStyle]);
+  const fillStyle = useMemo(() => [staticStyles.fill, dockFillStyle], [dockFillStyle]);
   const contentStyle = useMemo(
-    () => [styles.content, { paddingBottom: insets.bottom }, nativeKeyboardStyle],
+    () => [staticStyles.content, { paddingBottom: insets.bottom }, nativeKeyboardStyle],
     [insets.bottom, nativeKeyboardStyle],
   );
 
   return (
     <Animated.View style={dockStyle} onLayout={onLayout}>
-      <Animated.View pointerEvents="none" style={fillStyle} />
+      <View pointerEvents="none" style={styles.surfaceFill} />
+      <Animated.View pointerEvents="none" style={fillStyle}>
+        <View style={styles.surfaceFill} />
+      </Animated.View>
       <Animated.View style={contentStyle}>{children}</Animated.View>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create((theme) => ({
+const staticStyles = RNStyleSheet.create({
   dock: {
     position: "absolute",
     left: 0,
@@ -63,16 +68,21 @@ const styles = StyleSheet.create((theme) => ({
     bottom: 0,
     zIndex: 20,
     width: "100%",
-    backgroundColor: theme.colors.surface0,
   },
   fill: {
     position: "absolute",
     top: 0,
     right: 0,
     left: 0,
-    backgroundColor: theme.colors.surface0,
   },
   content: {
     width: "100%",
+  },
+});
+
+const styles = StyleSheet.create((theme) => ({
+  surfaceFill: {
+    ...RNStyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.surface0,
   },
 }));

@@ -331,6 +331,40 @@ export function createMarkdownStyles(theme: Theme) {
 }
 
 /**
+ * Thinking / reasoning prose: same size and line-height as assistant replies,
+ * muted color, and no trailing paragraph gap (the stream owns separation from
+ * the next reply line — stacking paragraph margin + stream gap looked like a
+ * blank line).
+ */
+export function createThinkingMarkdownStyles(theme: Theme) {
+  const baseStyles = createMarkdownStyles(theme);
+  const proseLineHeight = Math.round(theme.fontSize.base * 1.4);
+
+  return {
+    ...baseStyles,
+
+    body: {
+      ...baseStyles.body,
+      color: theme.colors.foregroundMuted,
+      fontSize: theme.fontSize.base,
+      lineHeight: proseLineHeight,
+    },
+
+    text: {
+      ...baseStyles.text,
+      color: theme.colors.foregroundMuted,
+    },
+
+    paragraph: {
+      ...baseStyles.paragraph,
+      // Keep a tight step between thinking paragraphs; zero trailing gap so the
+      // following stream item (assistant line / speak) sits on the same rhythm.
+      marginBottom: theme.spacing[1],
+    },
+  };
+}
+
+/**
  * Creates a smaller variant of markdown styles for compact UI elements
  * like thought bubbles, tooltips, or side panels.
  */

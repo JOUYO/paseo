@@ -1,11 +1,13 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { getProviderIcon } from "@/components/provider-icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Theme } from "@/styles/theme";
 import { ProviderUsageBalanceBar } from "./balance-bar";
-import { formatAgo } from "./format";
+import { formatUpdatedLabel } from "./format";
+import { localizeProviderUsageError, localizeProviderUsageLabel } from "./labels";
 import type { ProviderUsage } from "./types";
 import { ProviderUsageWindowBar } from "./window-bar";
 
@@ -24,14 +26,9 @@ const ThemedProviderUsageIcon = withUnistyles(ProviderUsageIcon);
 
 const mutedIconColor = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 
-function statusText(usage: ProviderUsage): string | null {
-  if (usage.status === "available") return null;
-  return usage.status === "error" ? "Error" : "Unavailable";
-}
-
 function footerText(usage: ProviderUsage): string | null {
-  const updated = formatAgo(usage.fetchedAt);
-  const parts = [usage.sourceLabel, updated ? `Updated ${updated}` : null].filter(
+  const updated = formatUpdatedLabel(usage.fetchedAt);
+  const parts = [usage.sourceLabel, updated].filter(
     (part): part is string => typeof part === "string" && part.length > 0,
   );
   return parts.length > 0 ? parts.join(" · ") : null;
@@ -44,7 +41,13 @@ export function ProviderUsageCard({
   usage: ProviderUsage;
   compact?: boolean;
 }) {
-  const status = statusText(usage);
+  const { t } = useTranslation();
+  let status: string | null = null;
+  if (usage.status === "error") {
+    status = t("providerUsage.status.error");
+  } else if (usage.status !== "available") {
+    status = t("providerUsage.status.unavailable");
+  }
   const footer = footerText(usage);
   const balances = usage.balances ?? [];
   const details = usage.details ?? [];
@@ -91,7 +94,7 @@ export function ProviderUsageCard({
 
       {usage.error ? (
         <Text style={styles.error} numberOfLines={3}>
-          {usage.error}
+          {localizeProviderUsageError(usage.error)}
         </Text>
       ) : null}
 
@@ -111,7 +114,7 @@ export function ProviderUsageCard({
           {remainingDetails.map((detail) => (
             <View key={detail.id} style={styles.detailRow}>
               <Text style={styles.detailLabel} numberOfLines={1}>
-                {detail.label}
+                {localizeProviderUsageLabel(detail.id, detail.label)}
               </Text>
               <Text style={styles.detailValue} numberOfLines={1}>
                 {detail.value}
