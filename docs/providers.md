@@ -93,7 +93,7 @@ Kimi Code usage follows the CLI-managed credential file at `KIMI_CODE_HOME` or `
 
 Cursor plan usage resolves an access token from, in order: `CURSOR_ACCESS_TOKEN` / `CURSOR_TOKEN`, the desktop app's `state.vscdb` (`cursorAuthStatus`), then the Cursor Agent CLI session file at `~/.config/cursor/auth.json`. Headless hosts that only have `cursor-agent` logged in need that CLI auth file (or an env token); without it the fetcher returns `unavailable` and the usage UI hides Cursor.
 
-Cursor `GetCurrentPeriodUsage` amounts are cents. `totalSpend = includedSpend + bonusSpend`; the plan bar must use **includedSpend / limit** (bonus is free overage and must not inflate "used"). Also surface `totalPercentUsed` / `apiPercentUsed` / `autoPercentUsed` as windows — Cursor gates quota on those percentages more than the dollar estimate.
+Cursor `GetCurrentPeriodUsage` amounts are cents. `totalSpend = includedSpend + bonusSpend`, but the Ultra dashboard is percentage-first (Total / First-party / API). When `apiPercentUsed` is present, the dollar bar is **`limit × apiPercentUsed / 100`** against the included API cap (e.g. 39.2% of $400 → $156.80) — do not use raw `includedSpend`/`totalSpend`, which often pin included at the cap while API % is still mid-cycle. `bonusSpend` is free retail overage, not "already used" of the $400 rail.
 
 ## Context-window meter
 

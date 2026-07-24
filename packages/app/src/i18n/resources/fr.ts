@@ -2406,7 +2406,7 @@ export const fr: TranslationResources = {
       planUsage: "Utilisation du forfait",
       totalUsage: "Total",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "Modèles first-party",
       bonusSpend: "Usage bonus",
       accountEmail: "E-mail du compte",
       account: "Compte",

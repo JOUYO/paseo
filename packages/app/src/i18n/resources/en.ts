@@ -2354,7 +2354,7 @@ export const en = {
       planUsage: "Plan usage",
       totalUsage: "Total",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "First-party models",
       bonusSpend: "Bonus usage",
       accountEmail: "Account email",
       account: "Account",

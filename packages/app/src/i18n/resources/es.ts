@@ -2400,7 +2400,7 @@ export const es: TranslationResources = {
       planUsage: "Uso del plan",
       totalUsage: "Total",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "Modelos de primera parte",
       bonusSpend: "Uso bonus",
       accountEmail: "Correo de la cuenta",
       account: "Cuenta",

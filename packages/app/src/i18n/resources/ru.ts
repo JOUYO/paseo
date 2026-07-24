@@ -2389,7 +2389,7 @@ export const ru: TranslationResources = {
       planUsage: "Использование тарифа",
       totalUsage: "Всего",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "Собственные модели",
       bonusSpend: "Бонусное использование",
       accountEmail: "Email аккаунта",
       account: "Аккаунт",

@@ -2365,7 +2365,7 @@ export const ja: TranslationResources = {
       planUsage: "プラン使用量",
       totalUsage: "合計",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "ファーストパーティモデル",
       bonusSpend: "ボーナス使用量",
       accountEmail: "アカウントのメール",
       account: "アカウント",

@@ -2338,7 +2338,7 @@ export const ar: TranslationResources = {
       planUsage: "استخدام الخطة",
       totalUsage: "الإجمالي",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "نماذج الطرف الأول",
       bonusSpend: "الاستخدام الإضافي",
       accountEmail: "بريد الحساب",
       account: "الحساب",

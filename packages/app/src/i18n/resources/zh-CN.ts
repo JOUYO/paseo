@@ -2309,7 +2309,7 @@ export const zhCN: TranslationResources = {
       planUsage: "套餐用量",
       totalUsage: "总计",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "第一方模型",
       bonusSpend: "赠送用量",
       accountEmail: "账户邮箱",
       account: "账户",

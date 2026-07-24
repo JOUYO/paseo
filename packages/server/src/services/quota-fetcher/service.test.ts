@@ -674,7 +674,7 @@ describe("real provider usage fetchers", () => {
       balances: [
         expect.objectContaining({
           id: "plan_usage",
-          // includedSpend (not totalSpend which includes free bonus)
+          // No percent fields in this fixture → fall back to includedSpend cents.
           used: 10,
           remaining: 25,
           limit: 40,

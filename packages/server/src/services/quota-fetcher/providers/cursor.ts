@@ -90,13 +90,26 @@ function centsToDollars(value: number | null): number | null {
   return value === null ? null : value / 100;
 }
 
+function roundUsd(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function formatUsdDetail(cents: number): string {
   return `$${centsToDollars(cents)!.toFixed(2)}`;
 }
 
+function readFinitePercent(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 /**
  * Map Cursor planUsage onto Paseo balances/windows.
- * Plan bar uses includedSpend vs limit (not totalSpend, which includes free bonus).
+ *
+ * Cursor's Ultra dashboard is percentage-first (Total / First-party / API). The
+ * dollar bar for the "$400 API included" rail is attributed as
+ * `limit × apiPercentUsed / 100` — not raw includedSpend/totalSpend. Those cent
+ * fields mix retail cost and free bonus and often pin includedSpend to the
+ * limit even while API % is still well below 100.
  */
 export function normalizeCursorPlanUsage(
   planUsage: CursorPlanUsage,
@@ -106,40 +119,23 @@ export function normalizeCursorPlanUsage(
   windows: ProviderUsageWindow[];
   details: ProviderUsageDetail[];
 } {
-  const includedSpend = centsToDollars(planUsage.includedSpend);
   const limit = centsToDollars(planUsage.limit);
-  const remainingFromApi = centsToDollars(planUsage.remaining);
-  const remaining =
-    remainingFromApi ??
-    (includedSpend != null && limit != null ? Math.max(0, limit - includedSpend) : null);
-  const usedPct = usedPctOf(includedSpend, limit);
-
-  const balances: ProviderUsageBalance[] = [];
-  if (includedSpend != null || limit != null || remaining != null) {
-    balances.push({
-      id: "plan_usage",
-      label: "Plan usage",
-      used: includedSpend,
-      remaining,
-      limit,
-      unit: "usd",
-      resetsAt: billingCycleEnd,
-      tone: toneFromUsedPct(usedPct),
-    });
-  }
+  const apiPercent = readFinitePercent(planUsage.apiPercentUsed);
+  const totalPercent = readFinitePercent(planUsage.totalPercentUsed);
+  const autoPercent = readFinitePercent(planUsage.autoPercentUsed);
 
   const windows: ProviderUsageWindow[] = [];
   const percentWindows: Array<{
     id: string;
     label: string;
-    value: number | null | undefined;
+    value: number | null;
   }> = [
-    { id: "total_usage", label: "Total", value: planUsage.totalPercentUsed },
-    { id: "api_usage", label: "API", value: planUsage.apiPercentUsed },
-    { id: "auto_usage", label: "Auto", value: planUsage.autoPercentUsed },
+    { id: "total_usage", label: "Total", value: totalPercent },
+    { id: "auto_usage", label: "First-party models", value: autoPercent },
+    { id: "api_usage", label: "API", value: apiPercent },
   ];
   for (const window of percentWindows) {
-    if (typeof window.value !== "number" || !Number.isFinite(window.value)) continue;
+    if (window.value == null) continue;
     windows.push(
       windowFromUsedPct({
         id: window.id,
@@ -149,6 +145,51 @@ export function normalizeCursorPlanUsage(
         tone: toneFromUsedPct(window.value),
       }),
     );
+  }
+
+  const balances: ProviderUsageBalance[] = [];
+  if (limit != null && limit > 0 && apiPercent != null) {
+    const used = roundUsd((limit * apiPercent) / 100);
+    balances.push({
+      id: "plan_usage",
+      label: "API",
+      used,
+      remaining: roundUsd(Math.max(0, limit - used)),
+      limit,
+      unit: "usd",
+      resetsAt: billingCycleEnd,
+      tone: toneFromUsedPct(apiPercent),
+    });
+  } else if (limit != null && limit > 0 && totalPercent != null) {
+    const used = roundUsd((limit * totalPercent) / 100);
+    balances.push({
+      id: "plan_usage",
+      label: "Plan usage",
+      used,
+      remaining: roundUsd(Math.max(0, limit - used)),
+      limit,
+      unit: "usd",
+      resetsAt: billingCycleEnd,
+      tone: toneFromUsedPct(totalPercent),
+    });
+  } else {
+    const includedSpend = centsToDollars(planUsage.includedSpend);
+    const remainingFromApi = centsToDollars(planUsage.remaining);
+    const remaining =
+      remainingFromApi ??
+      (includedSpend != null && limit != null ? Math.max(0, limit - includedSpend) : null);
+    if (includedSpend != null || limit != null || remaining != null) {
+      balances.push({
+        id: "plan_usage",
+        label: "Plan usage",
+        used: includedSpend,
+        remaining,
+        limit,
+        unit: "usd",
+        resetsAt: billingCycleEnd,
+        tone: toneFromUsedPct(usedPctOf(includedSpend, limit)),
+      });
+    }
   }
 
   const details: ProviderUsageDetail[] = [];
@@ -263,12 +304,13 @@ export class CursorQuotaProvider implements ProviderUsageFetcher {
 
     const resp = CursorUsageResponseSchema.parse(await res.json());
     const billingCycleEnd = parseCursorBillingCycleTimestamp(resp.billingCycleEnd);
+    const planLabel = await this.fetchPlanLabel(token);
     if (!resp.planUsage) {
       return {
         providerId: this.providerId,
         displayName: this.displayName,
         status: "available",
-        planLabel: null,
+        planLabel,
         windows: [],
         balances: [],
         details: [],
@@ -285,11 +327,42 @@ export class CursorQuotaProvider implements ProviderUsageFetcher {
       providerId: this.providerId,
       displayName: this.displayName,
       status: "available",
-      planLabel: null,
+      planLabel,
       windows,
       balances,
       details,
       error: null,
     };
+  }
+
+  private async fetchPlanLabel(token: string): Promise<string | null> {
+    try {
+      const res = await fetchProviderApi(
+        this.fetchApi,
+        "https://api2.cursor.sh/aiserver.v1.DashboardService/GetPlanInfo",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Connect-Protocol-Version": "1",
+          },
+          body: JSON.stringify({}),
+        },
+      );
+      if (!res.ok) return null;
+      const parsed = z
+        .object({
+          planInfo: z
+            .object({
+              planName: z.string().min(1).optional(),
+            })
+            .optional(),
+        })
+        .parse(await res.json());
+      return parsed.planInfo?.planName ?? null;
+    } catch {
+      return null;
+    }
   }
 }

@@ -14,7 +14,7 @@ const LABEL_KEYS: Record<string, string> = {
   plan_usage: "providerUsage.labels.planUsage",
   total_usage: "providerUsage.labels.totalUsage",
   api_usage: "providerUsage.labels.apiUsage",
-  auto_usage: "providerUsage.labels.autoUsage",
+  auto_usage: "providerUsage.labels.firstPartyModels",
   bonus_spend: "providerUsage.labels.bonusSpend",
   account_email: "providerUsage.labels.accountEmail",
   account_name: "providerUsage.labels.account",

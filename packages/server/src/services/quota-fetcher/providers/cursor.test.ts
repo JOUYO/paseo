@@ -35,48 +35,50 @@ describe("readCursorTokenFromAuthJson", () => {
 });
 
 describe("normalizeCursorPlanUsage", () => {
-  test("uses includedSpend against limit, not totalSpend with bonus", () => {
+  test("attributes API dollars from apiPercentUsed, matching the Ultra dashboard", () => {
     const normalized = normalizeCursorPlanUsage(
       {
-        totalSpend: 49317,
+        totalSpend: 49828,
         includedSpend: 40000,
-        bonusSpend: 9317,
+        bonusSpend: 9828,
         remaining: null,
         limit: 40000,
-        autoPercentUsed: 14.8585,
+        autoPercentUsed: 15.114,
         apiPercentUsed: 39.2,
-        totalPercentUsed: 19.7268,
+        totalPercentUsed: 19.9312,
       },
       "2026-08-21T09:02:10.000Z",
     );
 
+    // 39.2% of the $400 API included rail — not includedSpend ($400) or bonus (~$98).
     expect(normalized.balances).toEqual([
       expect.objectContaining({
         id: "plan_usage",
-        used: 400,
-        remaining: 0,
+        label: "API",
+        used: 156.8,
+        remaining: 243.2,
         limit: 400,
         unit: "usd",
-        tone: "danger",
+        tone: "ok",
         resetsAt: "2026-08-21T09:02:10.000Z",
       }),
     ]);
     expect(normalized.windows.map((window) => window.id)).toEqual([
       "total_usage",
-      "api_usage",
       "auto_usage",
+      "api_usage",
     ]);
-    expect(normalized.windows[0]).toMatchObject({
-      id: "total_usage",
-      usedPct: 19.7268,
-      remainingPct: expect.closeTo(80.2732, 5),
-    });
+    expect(normalized.windows).toEqual([
+      expect.objectContaining({ id: "total_usage", usedPct: 19.9312 }),
+      expect.objectContaining({ id: "auto_usage", label: "First-party models", usedPct: 15.114 }),
+      expect.objectContaining({ id: "api_usage", usedPct: 39.2 }),
+    ]);
     expect(normalized.details).toEqual([
-      { id: "bonus_spend", label: "Bonus usage", value: "$93.17" },
+      { id: "bonus_spend", label: "Bonus usage", value: "$98.28" },
     ]);
   });
 
-  test("prefers API remaining when present", () => {
+  test("falls back to includedSpend when percent fields are absent", () => {
     const normalized = normalizeCursorPlanUsage(
       {
         totalSpend: 1500,
@@ -94,6 +96,7 @@ describe("normalizeCursorPlanUsage", () => {
       limit: 40,
       tone: "ok",
     });
+    expect(normalized.windows).toEqual([]);
     expect(normalized.details).toEqual([
       { id: "bonus_spend", label: "Bonus usage", value: "$5.00" },
     ]);

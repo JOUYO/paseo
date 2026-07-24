@@ -2381,7 +2381,7 @@ export const ptBR: TranslationResources = {
       planUsage: "Uso do plano",
       totalUsage: "Total",
       apiUsage: "API",
-      autoUsage: "Auto",
+      firstPartyModels: "Modelos first-party",
       bonusSpend: "Uso bônus",
       accountEmail: "E-mail da conta",
       account: "Conta",
