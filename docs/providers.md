@@ -12,6 +12,8 @@ The only built-in ACP provider today is `copilot` (`copilot-acp-agent.ts`). `Gen
 
 Copilot custom agents are exposed through ACP session config, not the slash-command list. When custom agents are available, Copilot returns a select config option with `id: "agent"` and `category: "_agent"`; Paseo maps that to the `agent` provider feature. Copilot uses the agent display name as the option value, and the blank value means the default Copilot agent.
 
+Cursor ACP advertises `clientCapabilities._meta.parameterizedModelPicker: true` so the agent exposes model parameters as session config options instead of collapsed variant ids. Paseo maps Cursor's `context` (context length) and `fast` select options to provider features. When both `session/set_model` and a model config option are available, prefer `session/set_config_option` for model changes — Cursor's `set_model` path discards the refreshed config options, which would leave context/fast stuck on the previous model.
+
 ### Direct
 
 Implement the `AgentClient` and `AgentSession` interfaces from `agent-sdk-types.ts` yourself. This gives full control but requires you to handle process management, streaming, permissions, and session persistence from scratch.
@@ -88,6 +90,15 @@ To add plan usage for a provider, add `packages/server/src/services/quota-fetche
 Keep the protocol shape provider-agnostic. Do not add provider-specific renderers for new limit windows; labels and generic bars should carry the UI. API responses should be parsed and normalized with Zod inside the fetcher, while the protocol boundary stays strict so old/new client compatibility is explicit.
 
 Kimi Code usage follows the CLI-managed credential file at `KIMI_CODE_HOME` or `~/.kimi-code/credentials/kimi-code.json`; do not probe the legacy `~/.kimi` path as the primary source for current Kimi Code installs.
+
+## Context-window meter
+
+The context-window meter is separate from plan usage. It reads `AgentUsage.contextWindowMaxTokens` / `contextWindowUsedTokens`, which flow from `usage_updated` / `turn_completed` stream events into the agent's `lastUsage` (persisted to the stored record so reopened agents show their last-known ring). Each provider sources these fields differently:
+
+- **Claude** — `contextWindowMaxTokens` is baked into the curated model manifest (`claude/model-manifest.ts`); used tokens arrive from the SDK.
+- **Grok** — reads the CLI's per-session `signals.json` (`grok-context-usage.ts`) for both max and used.
+- **Cursor / OpenCode** — resolve max from catalog model metadata; used tokens arrive from ACP context updates.
+- **Codex** — the app-server's `thread/tokenUsage/updated` notification is unreliable across CLI versions and the model list carries no context window, so `codex/context-usage.ts` reads the latest `token_count` event from the session rollout `.jsonl` (`~/.codex/sessions/{date}/rollout-{ts}-{id}.jsonl`) as the authoritative fallback. It reads only a bounded tail of the file (rollouts can reach hundreds of MB) and merges `model_context_window` + `last_token_usage.total_tokens` into `lastUsage` on connect (reopened sessions) and turn completion. `toAgentUsage` accepts both the flat and `info`-wrapped shapes.
 
 ---
 
