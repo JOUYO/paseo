@@ -674,12 +674,14 @@ describe("real provider usage fetchers", () => {
       balances: [
         expect.objectContaining({
           id: "plan_usage",
-          used: 15,
+          // includedSpend (not totalSpend which includes free bonus)
+          used: 10,
           remaining: 25,
           limit: 40,
           resetsAt: null,
         }),
       ],
+      details: [{ id: "bonus_spend", label: "Bonus usage", value: "$5.00" }],
     });
   });
 

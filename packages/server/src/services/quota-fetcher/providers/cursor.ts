@@ -6,7 +6,12 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import type { Logger } from "pino";
 import { z } from "zod";
-import type { ProviderUsage, ProviderUsageBalance } from "../../../server/messages.js";
+import type {
+  ProviderUsage,
+  ProviderUsageBalance,
+  ProviderUsageDetail,
+  ProviderUsageWindow,
+} from "../../../server/messages.js";
 import type { ProviderApiFetch, ProviderUsageFetcher } from "../provider.js";
 import {
   ApiNullableNumberSchema,
@@ -15,6 +20,7 @@ import {
   fetchProviderApi,
   toIsoStringOrNull,
   unavailableUsage,
+  windowFromUsedPct,
 } from "../usage.js";
 
 const execFileAsync = promisify(execFile);
@@ -25,16 +31,22 @@ const CursorBillingCycleTimestampSchema = z.preprocess(
   z.union([z.string(), z.number()]).nullable(),
 );
 
+const CursorPlanUsageSchema = z.object({
+  // Dollar fields are retail API-cost estimates in cents. Quota gating uses the
+  // percent fields; totalSpend = includedSpend + bonusSpend and must not be the
+  // "used" side of the plan-limit bar.
+  totalSpend: ApiNullableNumberSchema,
+  includedSpend: ApiNullableNumberSchema,
+  bonusSpend: ApiNullableNumberSchema,
+  remaining: ApiNullableNumberSchema,
+  limit: ApiNullableNumberSchema,
+  autoPercentUsed: ApiNullableNumberSchema.optional(),
+  apiPercentUsed: ApiNullableNumberSchema.optional(),
+  totalPercentUsed: ApiNullableNumberSchema.optional(),
+});
+
 const CursorUsageResponseSchema = z.object({
-  planUsage: z
-    .object({
-      totalSpend: ApiNullableNumberSchema,
-      includedSpend: ApiNullableNumberSchema,
-      bonusSpend: ApiNullableNumberSchema,
-      remaining: ApiNullableNumberSchema,
-      limit: ApiNullableNumberSchema,
-    })
-    .nullish(),
+  planUsage: CursorPlanUsageSchema.nullish(),
   billingCycleStart: CursorBillingCycleTimestampSchema,
   billingCycleEnd: CursorBillingCycleTimestampSchema,
 });
@@ -47,6 +59,7 @@ const CursorAuthJsonSchema = z.object({
   accessToken: z.string().min(1),
 });
 
+type CursorPlanUsage = z.infer<typeof CursorPlanUsageSchema>;
 type CursorUsageResponse = z.infer<typeof CursorUsageResponseSchema>;
 
 interface CursorQuotaProviderOptions {
@@ -75,6 +88,79 @@ function parseCursorBillingCycleTimestamp(
 
 function centsToDollars(value: number | null): number | null {
   return value === null ? null : value / 100;
+}
+
+function formatUsdDetail(cents: number): string {
+  return `$${centsToDollars(cents)!.toFixed(2)}`;
+}
+
+/**
+ * Map Cursor planUsage onto Paseo balances/windows.
+ * Plan bar uses includedSpend vs limit (not totalSpend, which includes free bonus).
+ */
+export function normalizeCursorPlanUsage(
+  planUsage: CursorPlanUsage,
+  billingCycleEnd: string | null,
+): {
+  balances: ProviderUsageBalance[];
+  windows: ProviderUsageWindow[];
+  details: ProviderUsageDetail[];
+} {
+  const includedSpend = centsToDollars(planUsage.includedSpend);
+  const limit = centsToDollars(planUsage.limit);
+  const remainingFromApi = centsToDollars(planUsage.remaining);
+  const remaining =
+    remainingFromApi ??
+    (includedSpend != null && limit != null ? Math.max(0, limit - includedSpend) : null);
+  const usedPct = usedPctOf(includedSpend, limit);
+
+  const balances: ProviderUsageBalance[] = [];
+  if (includedSpend != null || limit != null || remaining != null) {
+    balances.push({
+      id: "plan_usage",
+      label: "Plan usage",
+      used: includedSpend,
+      remaining,
+      limit,
+      unit: "usd",
+      resetsAt: billingCycleEnd,
+      tone: toneFromUsedPct(usedPct),
+    });
+  }
+
+  const windows: ProviderUsageWindow[] = [];
+  const percentWindows: Array<{
+    id: string;
+    label: string;
+    value: number | null | undefined;
+  }> = [
+    { id: "total_usage", label: "Total", value: planUsage.totalPercentUsed },
+    { id: "api_usage", label: "API", value: planUsage.apiPercentUsed },
+    { id: "auto_usage", label: "Auto", value: planUsage.autoPercentUsed },
+  ];
+  for (const window of percentWindows) {
+    if (typeof window.value !== "number" || !Number.isFinite(window.value)) continue;
+    windows.push(
+      windowFromUsedPct({
+        id: window.id,
+        label: window.label,
+        utilizationPct: window.value,
+        resetsAt: billingCycleEnd,
+        tone: toneFromUsedPct(window.value),
+      }),
+    );
+  }
+
+  const details: ProviderUsageDetail[] = [];
+  if (typeof planUsage.bonusSpend === "number" && planUsage.bonusSpend > 0) {
+    details.push({
+      id: "bonus_spend",
+      label: "Bonus usage",
+      value: formatUsdDetail(planUsage.bonusSpend),
+    });
+  }
+
+  return { balances, windows, details };
 }
 
 async function readCursorTokenFromSqlite(): Promise<string | null> {
@@ -177,31 +263,32 @@ export class CursorQuotaProvider implements ProviderUsageFetcher {
 
     const resp = CursorUsageResponseSchema.parse(await res.json());
     const billingCycleEnd = parseCursorBillingCycleTimestamp(resp.billingCycleEnd);
-    const balances: ProviderUsageBalance[] = [];
-    if (resp.planUsage) {
-      const totalSpend = centsToDollars(resp.planUsage.totalSpend);
-      const remaining = centsToDollars(resp.planUsage.remaining);
-      const limit = centsToDollars(resp.planUsage.limit);
-      balances.push({
-        id: "plan_usage",
-        label: "Plan usage",
-        used: totalSpend,
-        remaining,
-        limit,
-        unit: "usd",
-        resetsAt: billingCycleEnd,
-        tone: toneFromUsedPct(usedPctOf(totalSpend, limit)),
-      });
+    if (!resp.planUsage) {
+      return {
+        providerId: this.providerId,
+        displayName: this.displayName,
+        status: "available",
+        planLabel: null,
+        windows: [],
+        balances: [],
+        details: [],
+        error: null,
+      };
     }
+
+    const { balances, windows, details } = normalizeCursorPlanUsage(
+      resp.planUsage,
+      billingCycleEnd,
+    );
 
     return {
       providerId: this.providerId,
       displayName: this.displayName,
       status: "available",
       planLabel: null,
-      windows: [],
+      windows,
       balances,
-      details: [],
+      details,
       error: null,
     };
   }

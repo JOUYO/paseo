@@ -93,6 +93,8 @@ Kimi Code usage follows the CLI-managed credential file at `KIMI_CODE_HOME` or `
 
 Cursor plan usage resolves an access token from, in order: `CURSOR_ACCESS_TOKEN` / `CURSOR_TOKEN`, the desktop app's `state.vscdb` (`cursorAuthStatus`), then the Cursor Agent CLI session file at `~/.config/cursor/auth.json`. Headless hosts that only have `cursor-agent` logged in need that CLI auth file (or an env token); without it the fetcher returns `unavailable` and the usage UI hides Cursor.
 
+Cursor `GetCurrentPeriodUsage` amounts are cents. `totalSpend = includedSpend + bonusSpend`; the plan bar must use **includedSpend / limit** (bonus is free overage and must not inflate "used"). Also surface `totalPercentUsed` / `apiPercentUsed` / `autoPercentUsed` as windows — Cursor gates quota on those percentages more than the dollar estimate.
+
 ## Context-window meter
 
 The context-window meter is separate from plan usage. It reads `AgentUsage.contextWindowMaxTokens` / `contextWindowUsedTokens`, which flow from `usage_updated` / `turn_completed` stream events into the agent's `lastUsage` (persisted to the stored record so reopened agents show their last-known ring). Each provider sources these fields differently:
