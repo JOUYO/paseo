@@ -222,6 +222,19 @@ export const fr: TranslationResources = {
     actions: {
       loadMore: "Charger plus",
     },
+    manage: {
+      manage: "Gérer",
+      done: "Terminé",
+      hint: "Seules les sessions archivées peuvent être sélectionnées pour suppression.",
+      selectAll: "Tout sélectionner",
+      invertSelection: "Inverser",
+      delete: "Supprimer",
+      deleteSelected: "Supprimer ({{count}})",
+      deleting: "Suppression...",
+      deleteConfirmTitle: "Supprimer {{count}} session(s) ?",
+      deleteConfirmMessage:
+        "Cela supprime définitivement les sessions archivées sélectionnées de Paseo et efface l'historique de conversation de chaque fournisseur lorsque c'est possible. Cette action est irréversible.",
+    },
   },
   agentList: {
     fallbackTitle: "Nouvelle séance",
@@ -244,11 +257,6 @@ export const fr: TranslationResources = {
       archived: "Archivé",
       pending: "{{count}}en attente",
       attention: "Attention",
-    },
-    archiveSheet: {
-      hostOffline: "Hosthors ligne",
-      runningAgent: "Cet agent est toujours en cours d'exécution. L’archiver arrêtera l’agent.",
-      archive: "Archiver",
     },
   },
   message: {

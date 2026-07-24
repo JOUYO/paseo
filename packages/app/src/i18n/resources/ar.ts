@@ -218,6 +218,19 @@ export const ar: TranslationResources = {
     actions: {
       loadMore: "تحميل المزيد",
     },
+    manage: {
+      manage: "إدارة",
+      done: "تم",
+      hint: "يمكن تحديد الجلسات المؤرشفة فقط للحذف.",
+      selectAll: "تحديد الكل",
+      invertSelection: "عكس التحديد",
+      delete: "حذف",
+      deleteSelected: "حذف ({{count}})",
+      deleting: "جارٍ الحذف...",
+      deleteConfirmTitle: "حذف {{count}} جلسة/جلسات؟",
+      deleteConfirmMessage:
+        "سيؤدي هذا إلى إزالة الجلسات المؤرشفة المحددة نهائيًا من Paseo وحذف سجل المحادثة لدى كل مزود عند الإمكان. لا يمكن التراجع عن هذا الإجراء.",
+    },
   },
   agentList: {
     fallbackTitle: "جلسة جديدة",
@@ -240,11 +253,6 @@ export const ar: TranslationResources = {
       archived: "مؤرشف",
       pending: "{{count}}معلق",
       attention: "انتباه",
-    },
-    archiveSheet: {
-      hostOffline: "Host غير متصل",
-      runningAgent: "هذا الوكيل لا يزال قيد التشغيل. ستؤدي أرشفته إلى إيقاف الوكيل.",
-      archive: "أرشيف",
     },
   },
   message: {

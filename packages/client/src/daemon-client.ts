@@ -2370,6 +2370,10 @@ export class DaemonClient {
         if (msg.payload.requestId !== requestId) {
           return null;
         }
+        // Cascade-deleted children reuse the same requestId; wait for the root.
+        if (msg.payload.agentId !== agentId) {
+          return null;
+        }
         return msg.payload;
       },
     });

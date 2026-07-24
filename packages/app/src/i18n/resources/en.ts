@@ -217,6 +217,19 @@ export const en = {
     actions: {
       loadMore: "Load more",
     },
+    manage: {
+      manage: "Manage",
+      done: "Done",
+      hint: "Only archived sessions can be selected for deletion.",
+      selectAll: "Select all",
+      invertSelection: "Invert",
+      delete: "Delete",
+      deleteSelected: "Delete ({{count}})",
+      deleting: "Deleting...",
+      deleteConfirmTitle: "Delete {{count}} session(s)?",
+      deleteConfirmMessage:
+        "This permanently removes the selected archived sessions from Paseo and deletes each provider's conversation history when possible. This cannot be undone.",
+    },
   },
   agentList: {
     fallbackTitle: "New session",
@@ -239,11 +252,6 @@ export const en = {
       archived: "Archived",
       pending: "{{count}} pending",
       attention: "Attention",
-    },
-    archiveSheet: {
-      hostOffline: "Host offline",
-      runningAgent: "This agent is still running. Archiving it will stop the agent.",
-      archive: "Archive",
     },
   },
   message: {

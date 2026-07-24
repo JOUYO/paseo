@@ -218,6 +218,19 @@ export const zhCN: TranslationResources = {
     actions: {
       loadMore: "加载更多",
     },
+    manage: {
+      manage: "管理",
+      done: "完成",
+      hint: "只有已归档的会话可以选中删除。",
+      selectAll: "全选",
+      invertSelection: "反选",
+      delete: "删除",
+      deleteSelected: "删除 ({{count}})",
+      deleting: "正在删除...",
+      deleteConfirmTitle: "删除 {{count}} 个会话？",
+      deleteConfirmMessage:
+        "将从 Paseo 永久移除所选已归档会话，并在可能时删除各 provider 的对话历史。此操作无法撤销。",
+    },
   },
   agentList: {
     fallbackTitle: "新会话",
@@ -240,11 +253,6 @@ export const zhCN: TranslationResources = {
       archived: "已归档",
       pending: "{{count}} 个待处理",
       attention: "需要注意",
-    },
-    archiveSheet: {
-      hostOffline: "Host 离线",
-      runningAgent: "此 Agent 仍在运行。归档会停止该 Agent。",
-      archive: "归档",
     },
   },
   message: {

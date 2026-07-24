@@ -221,6 +221,19 @@ export const ja: TranslationResources = {
     actions: {
       loadMore: "さらに読み込む",
     },
+    manage: {
+      manage: "管理",
+      done: "完了",
+      hint: "削除できるのはアーカイブ済みセッションのみです。",
+      selectAll: "全選択",
+      invertSelection: "反転",
+      delete: "削除",
+      deleteSelected: "削除 ({{count}})",
+      deleting: "削除中...",
+      deleteConfirmTitle: "{{count}}件のセッションを削除しますか？",
+      deleteConfirmMessage:
+        "選択したアーカイブ済みセッションを Paseo から完全に削除し、可能な場合は各プロバイダー側の会話履歴も削除します。この操作は元に戻せません。",
+    },
   },
   agentList: {
     fallbackTitle: "新しいセッション",
@@ -243,11 +256,6 @@ export const ja: TranslationResources = {
       archived: "アーカイブ済み",
       pending: "{{count}}件保留中",
       attention: "注意",
-    },
-    archiveSheet: {
-      hostOffline: "ホストオフライン",
-      runningAgent: "このエージェントはまだ実行中です。アーカイブするとエージェントが停止します。",
-      archive: "アーカイブ",
     },
   },
   message: {

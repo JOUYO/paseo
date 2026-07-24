@@ -221,6 +221,19 @@ export const ptBR: TranslationResources = {
     actions: {
       loadMore: "Carregar mais",
     },
+    manage: {
+      manage: "Gerenciar",
+      done: "Concluído",
+      hint: "Somente sessões arquivadas podem ser selecionadas para exclusão.",
+      selectAll: "Selecionar tudo",
+      invertSelection: "Inverter",
+      delete: "Excluir",
+      deleteSelected: "Excluir ({{count}})",
+      deleting: "Excluindo...",
+      deleteConfirmTitle: "Excluir {{count}} sessão(ões)?",
+      deleteConfirmMessage:
+        "Isso remove permanentemente as sessões arquivadas selecionadas do Paseo e apaga o histórico de conversa de cada provedor quando possível. Esta ação não pode ser desfeita.",
+    },
   },
   agentList: {
     fallbackTitle: "Nova sessão",
@@ -243,11 +256,6 @@ export const ptBR: TranslationResources = {
       archived: "Arquivado",
       pending: "{{count}} pendente(s)",
       attention: "Atenção",
-    },
-    archiveSheet: {
-      hostOffline: "Host desconectado",
-      runningAgent: "Este agente ainda está em execução. Arquivá-lo interromperá o agente.",
-      archive: "Arquivar",
     },
   },
   message: {

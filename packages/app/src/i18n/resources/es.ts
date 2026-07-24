@@ -221,6 +221,19 @@ export const es: TranslationResources = {
     actions: {
       loadMore: "Cargar más",
     },
+    manage: {
+      manage: "Administrar",
+      done: "Listo",
+      hint: "Solo se pueden seleccionar para eliminar las sesiones archivadas.",
+      selectAll: "Seleccionar todo",
+      invertSelection: "Invertir",
+      delete: "Eliminar",
+      deleteSelected: "Eliminar ({{count}})",
+      deleting: "Eliminando...",
+      deleteConfirmTitle: "¿Eliminar {{count}} sesión(es)?",
+      deleteConfirmMessage:
+        "Esto elimina permanentemente las sesiones archivadas seleccionadas de Paseo y borra el historial de conversación de cada proveedor cuando sea posible. No se puede deshacer.",
+    },
   },
   agentList: {
     fallbackTitle: "Nueva sesión",
@@ -243,11 +256,6 @@ export const es: TranslationResources = {
       archived: "Archivado",
       pending: "{{count}}pendiente",
       attention: "Atención",
-    },
-    archiveSheet: {
-      hostOffline: "Hostfuera de línea",
-      runningAgent: "Este agente todavía está ejecutándose. Archivarlo detendrá al agente.",
-      archive: "Archivo",
     },
   },
   message: {

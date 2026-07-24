@@ -220,6 +220,19 @@ export const ru: TranslationResources = {
     actions: {
       loadMore: "Загрузить больше",
     },
+    manage: {
+      manage: "Управление",
+      done: "Готово",
+      hint: "Для удаления можно выбрать только архивные сессии.",
+      selectAll: "Выбрать все",
+      invertSelection: "Инвертировать",
+      delete: "Удалить",
+      deleteSelected: "Удалить ({{count}})",
+      deleting: "Удаление...",
+      deleteConfirmTitle: "Удалить {{count}} сессию(и)?",
+      deleteConfirmMessage:
+        "Выбранные архивные сессии будут навсегда удалены из Paseo, а история разговора у каждого провайдера — по возможности тоже. Это нельзя отменить.",
+    },
   },
   agentList: {
     fallbackTitle: "Новая сессия",
@@ -242,11 +255,6 @@ export const ru: TranslationResources = {
       archived: "В архиве",
       pending: "{{count}}на рассмотрении",
       attention: "Внимание",
-    },
-    archiveSheet: {
-      hostOffline: "Host оффлайн",
-      runningAgent: "Этот агент все еще работает. Архивирование остановит агент.",
-      archive: "Архив",
     },
   },
   message: {
