@@ -296,8 +296,8 @@ function mergeMutableConfigIntoPersistedConfig(params: {
     } as PersistedConfig["agents"];
   }
 
-  const dictationEnabled = readFeatureToggleEnabled(mutable.dictation, true);
-  const voiceModeEnabled = readFeatureToggleEnabled(mutable.voiceMode, true);
+  const dictationEnabled = readFeatureToggleEnabled(mutable.dictation, false);
+  const voiceModeEnabled = readFeatureToggleEnabled(mutable.voiceMode, false);
 
   return {
     ...persisted,

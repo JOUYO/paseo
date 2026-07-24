@@ -20,10 +20,8 @@ export interface VoiceFeaturesMutationViewState {
 
 function readFeatureEnabled(config: MutableDaemonConfig | null, feature: VoiceFeatureId): boolean {
   const entry = config?.[feature];
-  if (!entry || typeof entry.enabled !== "boolean") {
-    return true;
-  }
-  return entry.enabled;
+  // Opt-in: unknown/missing config must not look enabled (avoids load-then-hide flash).
+  return entry?.enabled === true;
 }
 
 export function getVoiceFeaturesCardState(input: {

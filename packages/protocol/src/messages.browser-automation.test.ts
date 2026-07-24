@@ -170,21 +170,21 @@ describe("browser automation protocol integration", () => {
     ).toEqual({ enabled: true });
   });
 
-  test("mutable daemon config defaults dictation and voice mode on and accepts patches", () => {
+  test("mutable daemon config defaults dictation and voice mode off and accepts patches", () => {
     const parsed = MutableDaemonConfigSchema.parse({
       mcp: { injectIntoAgents: false },
     });
-    expect(parsed.dictation).toEqual({ enabled: true });
-    expect(parsed.voiceMode).toEqual({ enabled: true });
+    expect(parsed.dictation).toEqual({ enabled: false });
+    expect(parsed.voiceMode).toEqual({ enabled: false });
 
     expect(
       MutableDaemonConfigPatchSchema.parse({
-        dictation: { enabled: false },
-        voiceMode: { enabled: false },
+        dictation: { enabled: true },
+        voiceMode: { enabled: true },
       }),
     ).toMatchObject({
-      dictation: { enabled: false },
-      voiceMode: { enabled: false },
+      dictation: { enabled: true },
+      voiceMode: { enabled: true },
     });
   });
 });

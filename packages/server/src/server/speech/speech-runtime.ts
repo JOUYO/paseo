@@ -57,10 +57,10 @@ function resolveRequestedSpeechProviders(
   speechConfig: PaseoSpeechConfig | null,
 ): RequestedSpeechProviders {
   const defaults: RequestedSpeechProviders = {
-    dictationStt: { provider: "local", explicit: false, enabled: true },
-    voiceTurnDetection: { provider: "local", explicit: false, enabled: true },
-    voiceStt: { provider: "local", explicit: false, enabled: true },
-    voiceTts: { provider: "local", explicit: false, enabled: true },
+    dictationStt: { provider: "local", explicit: false, enabled: false },
+    voiceTurnDetection: { provider: "local", explicit: false, enabled: false },
+    voiceStt: { provider: "local", explicit: false, enabled: false },
+    voiceTts: { provider: "local", explicit: false, enabled: false },
   };
 
   const fromConfig = speechConfig?.providers;
@@ -131,9 +131,9 @@ function buildRealtimeVoiceReadiness(params: {
   sttService: SpeechToTextProvider | null;
   ttsService: TextToSpeechProvider | null;
 }): SpeechReadinessState {
-  const voiceTurnDetectionEnabled = params.providers.voiceTurnDetection.enabled !== false;
-  const voiceSttEnabled = params.providers.voiceStt.enabled !== false;
-  const voiceTtsEnabled = params.providers.voiceTts.enabled !== false;
+  const voiceTurnDetectionEnabled = params.providers.voiceTurnDetection.enabled === true;
+  const voiceSttEnabled = params.providers.voiceStt.enabled === true;
+  const voiceTtsEnabled = params.providers.voiceTts.enabled === true;
   const enabled = voiceTurnDetectionEnabled || voiceSttEnabled || voiceTtsEnabled;
   if (!enabled) {
     return {
@@ -189,7 +189,7 @@ function buildDictationReadiness(params: {
   providers: RequestedSpeechProviders;
   dictationSttService: SpeechToTextProvider | null;
 }): SpeechReadinessState {
-  const enabled = params.providers.dictationStt.enabled !== false;
+  const enabled = params.providers.dictationStt.enabled === true;
   if (!enabled) {
     return {
       enabled: false,
@@ -290,22 +290,22 @@ function describeRequestedProviders(providers: RequestedSpeechProviders): {
   return {
     dictationStt: {
       provider: providers.dictationStt.provider,
-      enabled: providers.dictationStt.enabled !== false,
+      enabled: providers.dictationStt.enabled === true,
       explicit: providers.dictationStt.explicit,
     },
     voiceTurnDetection: {
       provider: providers.voiceTurnDetection.provider,
-      enabled: providers.voiceTurnDetection.enabled !== false,
+      enabled: providers.voiceTurnDetection.enabled === true,
       explicit: providers.voiceTurnDetection.explicit,
     },
     voiceStt: {
       provider: providers.voiceStt.provider,
-      enabled: providers.voiceStt.enabled !== false,
+      enabled: providers.voiceStt.enabled === true,
       explicit: providers.voiceStt.explicit,
     },
     voiceTts: {
       provider: providers.voiceTts.provider,
-      enabled: providers.voiceTts.enabled !== false,
+      enabled: providers.voiceTts.enabled === true,
       explicit: providers.voiceTts.explicit,
     },
   };
@@ -539,12 +539,12 @@ export function createSpeechService(params: {
       localVoiceTtsProvider,
     });
     const unavailableFeatures = [
-      providers.dictationStt.enabled !== false && !dictationSttService ? "dictation.stt" : null,
-      providers.voiceTurnDetection.enabled !== false && !turnDetectionService
+      providers.dictationStt.enabled === true && !dictationSttService ? "dictation.stt" : null,
+      providers.voiceTurnDetection.enabled === true && !turnDetectionService
         ? "voice.turnDetection"
         : null,
-      providers.voiceStt.enabled !== false && !sttService ? "voice.stt" : null,
-      providers.voiceTts.enabled !== false && !ttsService ? "voice.tts" : null,
+      providers.voiceStt.enabled === true && !sttService ? "voice.stt" : null,
+      providers.voiceTts.enabled === true && !ttsService ? "voice.tts" : null,
     ].filter((feature): feature is string => feature !== null);
 
     if (unavailableFeatures.length > 0) {

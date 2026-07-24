@@ -982,6 +982,9 @@ export const ru: TranslationResources = {
       branchSource: "Имя ветки",
       groupByProject: "Проект",
       groupByStatus: "Статус",
+      projectIcons: "Иконки проекта",
+      projectIconsShow: "Показать",
+      projectIconsHide: "Скрыть",
       status: {
         scriptsAvailable: "Доступны скрипты",
         creating: "Создание...",
@@ -1408,6 +1411,8 @@ export const ru: TranslationResources = {
     direct: {
       title: "Прямое подключение",
       helper: "Введите адрес сервера Paseo.",
+      helperSameOrigin:
+        "Host заполнен с этой страницы. Оставьте для этого сервера или измените, чтобы подключить другой.",
       fields: {
         host: "Host",
         port: "Порт",
@@ -1630,9 +1635,15 @@ export const ru: TranslationResources = {
   contextWindow: {
     title: "Контекстное окно",
     used: "{{percentage}}% использовано",
+    usedEstimated: "{{percentage}}% использовано",
     tokens: "Токены{{used}}/{{max}}",
     sessionCost: "Стоимость сеанса{{cost}}",
     accessibility: "Контекстное окно{{percentage}}% использовано",
+    accessibilityEstimated: "Контекстное окно{{percentage}}% использовано",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1856,6 +1867,8 @@ export const ru: TranslationResources = {
           midnight: "Полночь",
           claude: "Клод",
           ghostty: "Призрачный",
+
+          deepspace: "Глубокий космос",
           auto: "Система",
         },
       },

@@ -995,9 +995,55 @@ export class ACPAgentClient implements AgentClient {
         }),
       );
       const transformed = this.transformSessionResponse(response);
-      return deriveFeaturesFromACP(transformed.configOptions, this.configFeatureOptions);
+      const configOptions = await this.resolveProbeConfigOptionsForFeatures({
+        connection: probe.connection,
+        sessionId: response.sessionId,
+        configOptions: transformed.configOptions ?? [],
+        modelId: config.model,
+      });
+      return deriveFeaturesFromACP(configOptions, this.configFeatureOptions);
     } finally {
       await this.closeProbe(probe);
+    }
+  }
+
+  private async resolveProbeConfigOptionsForFeatures({
+    connection,
+    sessionId,
+    configOptions,
+    modelId,
+  }: {
+    connection: ClientSideConnection;
+    sessionId: string;
+    configOptions: SessionConfigOption[];
+    modelId: string | undefined;
+  }): Promise<SessionConfigOption[]> {
+    const requestedModelId = typeof modelId === "string" ? modelId.trim() : "";
+    if (!requestedModelId) {
+      return configOptions;
+    }
+
+    const modelOption = findSelectConfigOption({ configOptions, category: "model" });
+    if (!modelOption || modelOption.currentValue === requestedModelId) {
+      return configOptions;
+    }
+    if (!findSelectConfigChoice({ option: modelOption, value: requestedModelId })) {
+      return configOptions;
+    }
+
+    try {
+      const response = await this.runACPRequest(() =>
+        connection.setSessionConfigOption({
+          sessionId,
+          configId: modelOption.id,
+          value: requestedModelId,
+        }),
+      );
+      return this.configOptionsTransformer
+        ? this.configOptionsTransformer(response.configOptions)
+        : response.configOptions;
+    } catch {
+      return configOptions;
     }
   }
 
@@ -1918,47 +1964,62 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       throw new Error("ACP session not initialized");
     }
 
-    if (selection.hasAvailableModels) {
-      if (!selection.availableModel) {
-        this.warnInvalidSelection(
-          modelId,
-          `is not a valid ${this.provider} model. Available options: ${this.availableModels
-            ?.map((model) => model.modelId)
-            .join(", ")}`,
-        );
-        return;
-      }
+    if (selection.hasAvailableModels && !selection.availableModel) {
+      this.warnInvalidSelection(
+        modelId,
+        `is not a valid ${this.provider} model. Available options: ${this.availableModels
+          ?.map((model) => model.modelId)
+          .join(", ")}`,
+      );
+      return;
+    }
 
+    // Prefer the config-option path when present. Cursor's unstable_setSessionModel
+    // discards the refreshed configOptions, which leaves model-dependent features
+    // (context length, fast) stuck on the previous model's options.
+    if (selection.configOption && selection.configChoice) {
+      const response = await this.connection.setSessionConfigOption({
+        sessionId: this.sessionId,
+        configId: selection.configOption.id,
+        value: modelId,
+      });
+      this.currentModel = this.applyConfigOptionResponse({
+        response,
+        configId: selection.configOption.id,
+        category: "model",
+        requestedValue: modelId,
+        label: "model",
+      });
+      this.pushEvent({
+        type: "model_changed",
+        provider: this.provider,
+        runtimeInfo: this.runtimeInfo(),
+      });
+      return;
+    }
+
+    if (selection.hasAvailableModels) {
       if (typeof this.connection.unstable_setSessionModel !== "function") {
         throw new Error(this.modelSelectionUnavailableMessage());
       }
-
-      try {
-        await this.connection.unstable_setSessionModel({
-          sessionId: this.sessionId,
-          modelId,
-        });
-        this.currentModel = modelId;
-        this.pushEvent({
-          type: "model_changed",
-          provider: this.provider,
-          runtimeInfo: this.runtimeInfo(),
-        });
-        return;
-      } catch {
-        // Fall through to config option path.
-      }
+      await this.connection.unstable_setSessionModel({
+        sessionId: this.sessionId,
+        modelId,
+      });
+      this.currentModel = modelId;
+      this.pushEvent({
+        type: "model_changed",
+        provider: this.provider,
+        runtimeInfo: this.runtimeInfo(),
+      });
+      return;
     }
 
-    const modelOption = selection.configOption;
-    if (!modelOption) {
-      throw new Error(this.modelSelectionUnavailableMessage());
-    }
-    if (!selection.configChoice) {
+    if (selection.configOption && !selection.configChoice) {
       this.warnInvalidSelection(
         modelId,
         `is not a valid ${this.provider} model config option. Available options: ${flattenSelectOptions(
-          modelOption.options,
+          selection.configOption.options,
         )
           .map((option) => option.value)
           .join(", ")}`,
@@ -1966,23 +2027,7 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       return;
     }
 
-    const response = await this.connection.setSessionConfigOption({
-      sessionId: this.sessionId,
-      configId: modelOption.id,
-      value: modelId,
-    });
-    this.currentModel = this.applyConfigOptionResponse({
-      response,
-      configId: modelOption.id,
-      category: "model",
-      requestedValue: modelId,
-      label: "model",
-    });
-    this.pushEvent({
-      type: "model_changed",
-      provider: this.provider,
-      runtimeInfo: this.runtimeInfo(),
-    });
+    throw new Error(this.modelSelectionUnavailableMessage());
   }
 
   async setThinkingOption(thinkingOptionId: string | null): Promise<void> {
@@ -2023,11 +2068,16 @@ export class ACPAgentSession implements AgentSession, ACPClient {
     if (!option) {
       throw new Error(`${this.provider} does not expose ACP thought-level selection`);
     }
-    const response = await this.connection.setSessionConfigOption({
-      sessionId: this.sessionId,
-      configId: option.id,
-      value: thinkingOptionId,
-    });
+    let response: Awaited<ReturnType<ClientSideConnection["setSessionConfigOption"]>>;
+    try {
+      response = await this.connection.setSessionConfigOption({
+        sessionId: this.sessionId,
+        configId: option.id,
+        value: thinkingOptionId,
+      });
+    } catch (error) {
+      throw toACPRequestError(error);
+    }
     this.thinkingOptionId = this.applyConfigOptionResponse({
       response,
       configId: option.id,
@@ -2610,7 +2660,19 @@ export class ACPAgentSession implements AgentSession, ACPClient {
       this.config.thinkingOptionId &&
       this.config.thinkingOptionId !== this.thinkingOptionId
     ) {
-      await this.setThinkingOption(this.config.thinkingOptionId);
+      try {
+        await this.setThinkingOption(this.config.thinkingOptionId);
+      } catch (error) {
+        // A stored thinking level the provider no longer accepts (provider
+        // update, model change) must not fail the whole session load. Drop it
+        // and keep the provider's current value.
+        const summary = summarizeACPRequestError(error);
+        this.logger.warn(
+          { value: this.config.thinkingOptionId, err: summary.diagnostic ?? summary.message },
+          `${this.provider} rejected the stored thinking option; keeping provider default`,
+        );
+        this.config.thinkingOptionId = undefined;
+      }
     }
     const configuredFeatureValues = this.config.featureValues ?? {};
     for (const featureOption of this.configFeatureOptions) {

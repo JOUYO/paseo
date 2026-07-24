@@ -970,6 +970,9 @@ export const en = {
       branchSource: "Branch name",
       groupByProject: "Project",
       groupByStatus: "Status",
+      projectIcons: "Project icons",
+      projectIconsShow: "Show",
+      projectIconsHide: "Hide",
       status: {
         scriptsAvailable: "Scripts available",
         creating: "Creating...",
@@ -1387,6 +1390,8 @@ export const en = {
     direct: {
       title: "Direct connection",
       helper: "Enter the address of a Paseo server.",
+      helperSameOrigin:
+        "Host is prefilled from this page. Keep it to use this server, or change it to connect to another.",
       fields: {
         host: "Host",
         port: "Port",
@@ -1607,9 +1612,15 @@ export const en = {
   contextWindow: {
     title: "Context window",
     used: "{{percentage}}% used",
+    usedEstimated: "About {{percentage}}% used",
     tokens: "{{used}} / {{max}} tokens",
     sessionCost: "Session cost {{cost}}",
     accessibility: "Context window {{percentage}}% used",
+    accessibilityEstimated: "Context window approximately {{percentage}}% used",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1829,6 +1840,7 @@ export const en = {
           midnight: "Midnight",
           claude: "Claude",
           ghostty: "Ghostty",
+          deepspace: "Deep Space",
           auto: "System",
         },
       },

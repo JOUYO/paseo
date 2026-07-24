@@ -512,10 +512,10 @@ function createInitialMutableDaemonConfig(config: PaseoDaemonConfig): MutableDae
     mcp: { injectIntoAgents: config.mcpInjectIntoAgents ?? true },
     browserTools: { enabled: config.browserToolsEnabled ?? false },
     dictation: {
-      enabled: config.speech?.providers.dictationStt.enabled !== false,
+      enabled: config.speech?.providers.dictationStt.enabled === true,
     },
     voiceMode: {
-      enabled: config.speech?.providers.voiceStt.enabled !== false,
+      enabled: config.speech?.providers.voiceStt.enabled === true,
     },
     providers,
     metadataGeneration: {

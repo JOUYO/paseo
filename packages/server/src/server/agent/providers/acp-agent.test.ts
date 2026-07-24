@@ -101,7 +101,9 @@ interface ACPModelSelectionInternals {
       configId: string;
       value: string;
     }) => Promise<unknown>;
+    unstable_setSessionModel?: (input: { sessionId: string; modelId: string }) => Promise<void>;
   };
+  availableModels?: Array<{ modelId: string; name: string; description?: string | null }> | null;
   configOptions: SessionConfigOption[];
 }
 
@@ -412,6 +414,83 @@ function prepareConfiguredOverrideSession(
 
   return { internals, setSessionMode, unstableSetSessionModel, setSessionConfigOption };
 }
+
+test("ACP setModel prefers config-option path so model-dependent features refresh", async () => {
+  const session = createSessionWithConfig({});
+  const setSessionConfigOption = vi.fn(async () => ({
+    configOptions: [
+      {
+        id: "model",
+        name: "Model",
+        category: "model",
+        type: "select",
+        currentValue: "opus",
+        options: [
+          { value: "sonnet", name: "Sonnet" },
+          { value: "opus", name: "Opus" },
+        ],
+      },
+      {
+        id: "context",
+        name: "Context",
+        category: "model_config",
+        type: "select",
+        currentValue: "1m",
+        options: [
+          { value: "300k", name: "300K" },
+          { value: "1m", name: "1M" },
+        ],
+      },
+    ],
+  }));
+  const unstableSetSessionModel = vi.fn(async () => undefined);
+  const internals = asInternals<ACPModelSelectionInternals>(session);
+  internals.sessionId = "session-1";
+  internals.connection = {
+    setSessionConfigOption,
+    unstable_setSessionModel: unstableSetSessionModel,
+  };
+  internals.availableModels = [
+    { modelId: "sonnet", name: "Sonnet", description: null },
+    { modelId: "opus", name: "Opus", description: null },
+  ];
+  internals.configOptions = [
+    {
+      id: "model",
+      name: "Model",
+      category: "model",
+      type: "select",
+      currentValue: "sonnet",
+      options: [
+        { value: "sonnet", name: "Sonnet" },
+        { value: "opus", name: "Opus" },
+      ],
+    },
+    {
+      id: "context",
+      name: "Context",
+      category: "model_config",
+      type: "select",
+      currentValue: "300k",
+      options: [
+        { value: "300k", name: "300K" },
+        { value: "1m", name: "1M" },
+      ],
+    },
+  ];
+
+  await session.setModel("opus");
+
+  expect(setSessionConfigOption).toHaveBeenCalledWith({
+    sessionId: "session-1",
+    configId: "model",
+    value: "opus",
+  });
+  expect(unstableSetSessionModel).not.toHaveBeenCalled();
+  expect(internals.configOptions.find((option) => option.id === "context")).toMatchObject({
+    currentValue: "1m",
+  });
+});
 
 test("ACP setModel only uses config-option fallback when the matching select choice contains the model", async () => {
   const logger = createTestLogger();

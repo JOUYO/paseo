@@ -17,8 +17,11 @@ import { useAppSettings, type WorkspaceTitleSource } from "@/hooks/use-settings"
 import { useHosts } from "@/runtime/host-runtime";
 import { useSidebarViewStore, type SidebarGroupMode } from "@/stores/sidebar-view-store";
 
-const ThemedSettings2 = withUnistyles(Settings2);
-const filterColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+// Prefer withUnistyles mappings over uniProps — lucide forwards unknown props to
+// SVG <path> on web, which logs React DOM warnings for `uniProps`.
+const ThemedSettings2 = withUnistyles(Settings2, (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
 
 interface DisplayPreferenceOption<Value extends string> {
   value: Value;
@@ -34,7 +37,7 @@ export function SidebarDisplayPreferencesMenu() {
   const clearHostFilters = useSidebarViewStore((state) => state.clearHostFilters);
   const hosts = useHosts();
   const {
-    settings: { workspaceTitleSource },
+    settings: { workspaceTitleSource, showSidebarProjectIcons },
     updateSettings,
   } = useAppSettings();
 
@@ -54,6 +57,14 @@ export function SidebarDisplayPreferencesMenu() {
     [t],
   );
 
+  const projectIconVisibilityItems = useMemo<Array<{ value: "show" | "hide"; label: string }>>(
+    () => [
+      { value: "show", label: t("sidebar.workspace.projectIconsShow") },
+      { value: "hide", label: t("sidebar.workspace.projectIconsHide") },
+    ],
+    [t],
+  );
+
   const handleSelectMode = useCallback(
     (mode: SidebarGroupMode) => {
       setGroupMode(mode);
@@ -64,6 +75,13 @@ export function SidebarDisplayPreferencesMenu() {
   const handleWorkspaceTitleSourceSelect = useCallback(
     (source: WorkspaceTitleSource) => {
       void updateSettings({ workspaceTitleSource: source });
+    },
+    [updateSettings],
+  );
+
+  const handleProjectIconVisibilitySelect = useCallback(
+    (value: "show" | "hide") => {
+      void updateSettings({ showSidebarProjectIcons: value === "show" });
     },
     [updateSettings],
   );
@@ -87,7 +105,7 @@ export function SidebarDisplayPreferencesMenu() {
         accessibilityLabel={t("sidebar.workspace.displayPreferences")}
         testID="sidebar-display-preferences-menu"
       >
-        <ThemedSettings2 size={14} uniProps={filterColorMapping} />
+        <ThemedSettings2 size={14} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" width={220} testID="sidebar-display-preferences-content">
         <View style={styles.menuHeader}>
@@ -138,6 +156,19 @@ export function SidebarDisplayPreferencesMenu() {
             isSelected={workspaceTitleSource === item.value}
             testIDPrefix="sidebar-workspace-title-source"
             onSelect={handleWorkspaceTitleSourceSelect}
+          />
+        ))}
+        <DropdownMenuSeparator />
+        <View style={styles.menuHeader}>
+          <Text style={styles.menuHeaderLabel}>{t("sidebar.workspace.projectIcons")}</Text>
+        </View>
+        {projectIconVisibilityItems.map((item) => (
+          <DisplayPreferenceMenuItem
+            key={item.value}
+            item={item}
+            isSelected={item.value === "show" ? showSidebarProjectIcons : !showSidebarProjectIcons}
+            testIDPrefix="sidebar-project-icons"
+            onSelect={handleProjectIconVisibilitySelect}
           />
         ))}
       </DropdownMenuContent>

@@ -960,6 +960,9 @@ export const ar: TranslationResources = {
       branchSource: "اسم الفرع",
       groupByProject: "المشروع",
       groupByStatus: "الحالة",
+      projectIcons: "أيقونات المشروع",
+      projectIconsShow: "إظهار",
+      projectIconsHide: "إخفاء",
       status: {
         scriptsAvailable: "البرامج النصية المتاحة",
         creating: "جارٍ الإنشاء...",
@@ -1376,6 +1379,7 @@ export const ar: TranslationResources = {
     direct: {
       title: "اتصال مباشر",
       helper: "أدخل عنوان خادم Paseo.",
+      helperSameOrigin: "يُملأ Host من هذه الصفحة. أبقِه لهذا الخادم أو غيّره للاتصال بخادم آخر.",
       fields: {
         host: "Host",
         port: "ميناء",
@@ -1596,9 +1600,15 @@ export const ar: TranslationResources = {
   contextWindow: {
     title: "نافذة السياق",
     used: "تم استخدام{{percentage}}%",
+    usedEstimated: "تم استخدام{{percentage}}%",
     tokens: "رموز{{used}}/{{max}}",
     sessionCost: "تكلفة الجلسة{{cost}}",
     accessibility: "تم استخدام نافذة السياق{{percentage}}%",
+    accessibilityEstimated: "تم استخدام نافذة السياق{{percentage}}%",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1817,6 +1827,8 @@ export const ar: TranslationResources = {
           midnight: "منتصف الليل",
           claude: "كلود",
           ghostty: "شبحي",
+
+          deepspace: "رمادي الفضاء",
           auto: "نظام",
         },
       },

@@ -56,6 +56,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Shortcut } from "@/components/ui/shortcut";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
@@ -91,10 +92,10 @@ import { PinnedTargetsRow } from "@/workspace-pins/pinned-targets-row";
 import { PinnableMenuItem } from "@/workspace-pins/pinnable-menu-item";
 
 const DROPDOWN_WIDTH = 220;
-const LOADING_TAB_LABEL_SKELETON_WIDTH = 80;
 const DEFAULT_INLINE_ADD_BUTTON_RESERVED_WIDTH = 36;
 
 const ThemedActivityIndicator = withUnistyles(ActivityIndicator);
+const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedX = withUnistyles(X);
 const ThemedCopy = withUnistyles(Copy);
 const ThemedRotateCw = withUnistyles(RotateCw);
@@ -490,13 +491,11 @@ function TabHandleContent({
   presentation,
   isHighlighted,
   showLabel,
-  tabLabelSkeletonStyle,
   tabLabelStyle,
 }: {
   presentation: WorkspaceTabPresentation;
   isHighlighted: boolean;
   showLabel: boolean;
-  tabLabelSkeletonStyle: React.ComponentProps<typeof View>["style"];
   tabLabelStyle: React.ComponentProps<typeof Text>["style"];
 }) {
   const tabHandleDataSet = useMemo(
@@ -510,7 +509,7 @@ function TabHandleContent({
         <WorkspaceTabIcon presentation={presentation} active={isHighlighted} />
       </View>
       {showLabel && presentation.titleState === "loading" ? (
-        <View style={tabLabelSkeletonStyle} />
+        <ThemedLoadingSpinner size={12} uniProps={mutedColorMapping} />
       ) : null}
       {showLabel && presentation.titleState !== "loading" ? (
         <Text style={tabLabelStyle} selectable={false} numberOfLines={1} ellipsizeMode="tail">
@@ -634,13 +633,6 @@ function TabChip({
     () => [styles.tabFocusIndicator, !isFocused && styles.tabFocusIndicatorUnfocused],
     [isFocused],
   );
-  const tabLabelSkeletonStyle = useMemo(
-    () => [
-      styles.tabLabelSkeleton,
-      showTrailingAffordance && styles.tabLabelSkeletonWithCloseButton,
-    ],
-    [showTrailingAffordance],
-  );
   const tabLabelStyle = useMemo(
     () => [
       styles.tabLabel,
@@ -676,7 +668,6 @@ function TabChip({
                 presentation={presentation}
                 isHighlighted={isHighlighted}
                 showLabel={showLabel}
-                tabLabelSkeletonStyle={tabLabelSkeletonStyle}
                 tabLabelStyle={tabLabelStyle}
               />
 
@@ -1321,19 +1312,6 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.normal,
     userSelect: "none",
-  },
-  tabLabelSkeleton: {
-    width: 96,
-    maxWidth: "100%",
-    flexShrink: 1,
-    minWidth: 0,
-    height: 10,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.surface3,
-    opacity: 0.9,
-  },
-  tabLabelSkeletonWithCloseButton: {
-    width: LOADING_TAB_LABEL_SKELETON_WIDTH,
   },
   tabLabelWithCloseButton: {
     paddingRight: 0,

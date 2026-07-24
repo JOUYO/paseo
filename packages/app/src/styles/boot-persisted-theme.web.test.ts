@@ -13,7 +13,8 @@ vi.mock("./apply-theme-setting", () => ({
     value === "zinc" ||
     value === "midnight" ||
     value === "claude" ||
-    value === "ghostty",
+    value === "ghostty" ||
+    value === "deepspace",
 }));
 
 import { bootPersistedThemeFromStorage } from "./boot-persisted-theme.web";

@@ -982,6 +982,9 @@ export const ptBR: TranslationResources = {
       branchSource: "Nome da branch",
       groupByProject: "Projeto",
       groupByStatus: "Estado",
+      projectIcons: "Ícones do projeto",
+      projectIconsShow: "Mostrar",
+      projectIconsHide: "Ocultar",
       status: {
         scriptsAvailable: "Scripts disponíveis",
         creating: "Criando...",
@@ -1403,6 +1406,8 @@ export const ptBR: TranslationResources = {
     direct: {
       title: "Conexão direta",
       helper: "Informe o endereço de um servidor Paseo.",
+      helperSameOrigin:
+        "Host é preenchido a partir desta página. Mantenha para este servidor ou altere para conectar a outro.",
       fields: {
         host: "Host",
         port: "Porta",
@@ -1625,9 +1630,15 @@ export const ptBR: TranslationResources = {
   contextWindow: {
     title: "Janela de contexto",
     used: "{{percentage}}% usado",
+    usedEstimated: "{{percentage}}% usado",
     tokens: "{{used}} / {{max}} tokens",
     sessionCost: "Custo da sessão {{cost}}",
     accessibility: "Janela de contexto {{percentage}}% usada",
+    accessibilityEstimated: "Janela de contexto {{percentage}}% usada",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1851,6 +1862,8 @@ export const ptBR: TranslationResources = {
           midnight: "Meia-noite",
           claude: "Claude",
           ghostty: "Ghostty",
+
+          deepspace: "Espaço profundo",
           auto: "Sistema",
         },
       },

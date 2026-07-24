@@ -7,10 +7,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { ScrollView as GHScrollView } from "react-native-gesture-handler";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { AppearanceStyleBoundary } from "@/components/appearance-style-boundary";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import type { Theme } from "@/styles/theme";
 import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
 import { buildLineDiff, parseUnifiedDiff, type DiffLine } from "@/utils/tool-call-parsers";
 import { highlightDiffLines } from "@/utils/diff-highlight";
@@ -33,7 +35,7 @@ interface ToolCallDetailsContentProps {
   errorText?: string;
   maxHeight?: number;
   fillAvailableHeight?: boolean;
-  showLoadingSkeleton?: boolean;
+  showLoading?: boolean;
   /** "flat" drops the bordered surface used by code/tool cards (e.g. thinking). */
   chrome?: "card" | "flat";
 }
@@ -713,12 +715,15 @@ function ErrorSection({ errorText, ds }: { errorText: string; ds: DetailStyles }
   );
 }
 
-function LoadingSkeleton({ containerStyle }: { containerStyle: StyleProp<ViewStyle> }) {
+const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
+const foregroundMutedColorMapping = (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+});
+
+function DetailsLoading({ containerStyle }: { containerStyle: StyleProp<ViewStyle> }) {
   return (
     <View style={containerStyle}>
-      <View style={styles.loadingLineWide} />
-      <View style={styles.loadingLineMedium} />
-      <View style={styles.loadingLineShort} />
+      <ThemedLoadingSpinner size="small" uniProps={foregroundMutedColorMapping} />
     </View>
   );
 }
@@ -736,7 +741,7 @@ function ToolCallDetailsContentInner({
   errorText,
   maxHeight,
   fillAvailableHeight = false,
-  showLoadingSkeleton = false,
+  showLoading = false,
   chrome = "card",
 }: ToolCallDetailsContentProps) {
   const { t } = useTranslation();
@@ -751,8 +756,8 @@ function ToolCallDetailsContentInner({
   }
 
   if (sections.length === 0) {
-    if (showLoadingSkeleton) {
-      return <LoadingSkeleton containerStyle={ds.loadingContainerStyle} />;
+    if (showLoading) {
+      return <DetailsLoading containerStyle={ds.loadingContainerStyle} />;
     }
     return <Text style={styles.emptyStateText}>{t("toolCallDetails.empty")}</Text>;
   }
@@ -867,7 +872,7 @@ const styles = StyleSheet.create((theme) => {
       fontFamily: theme.fontFamily.mono,
       fontSize: theme.fontSize.code,
       color: theme.colors.foreground,
-      lineHeight: 18,
+      lineHeight: Math.round(theme.fontSize.code * 1.55),
       ...(isWeb
         ? {
             whiteSpace: "pre",
@@ -882,7 +887,7 @@ const styles = StyleSheet.create((theme) => {
       fontFamily: theme.fontFamily.mono,
       fontSize: theme.fontSize.code,
       color: theme.colors.foregroundMuted,
-      lineHeight: 18,
+      lineHeight: Math.round(theme.fontSize.code * 1.55),
       marginBottom: theme.spacing[2],
     },
     subAgentActions: {
@@ -898,13 +903,13 @@ const styles = StyleSheet.create((theme) => {
       fontFamily: theme.fontFamily.mono,
       fontSize: theme.fontSize.code,
       color: theme.colors.foregroundMuted,
-      lineHeight: 18,
+      lineHeight: Math.round(theme.fontSize.code * 1.55),
     },
     subAgentActionSummary: {
       fontFamily: theme.fontFamily.mono,
       fontSize: theme.fontSize.code,
       color: theme.colors.foreground,
-      lineHeight: 18,
+      lineHeight: Math.round(theme.fontSize.code * 1.55),
     },
     jsonScroll: {
       borderWidth: theme.borderWidth[1],
@@ -927,26 +932,10 @@ const styles = StyleSheet.create((theme) => {
       fontStyle: "italic",
     },
     loadingContainer: {
-      gap: theme.spacing[2],
+      alignItems: "center",
+      justifyContent: "center",
       padding: theme.spacing[3],
-    },
-    loadingLineWide: {
-      height: 12,
-      width: "100%",
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.surface3,
-    },
-    loadingLineMedium: {
-      height: 12,
-      width: "72%",
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.surface3,
-    },
-    loadingLineShort: {
-      height: 12,
-      width: "48%",
-      borderRadius: theme.borderRadius.full,
-      backgroundColor: theme.colors.surface3,
+      minHeight: 48,
     },
   };
 });

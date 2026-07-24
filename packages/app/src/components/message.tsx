@@ -361,9 +361,6 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
     maxWidth: "100%",
     flexShrink: 1,
   },
-  bubbleWithText: {
-    paddingBottom: 0,
-  },
   text: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
@@ -379,6 +376,9 @@ const userMessageStylesheet = StyleSheet.create((theme) => ({
     width: "100%",
     minWidth: 0,
     flexShrink: 1,
+    // Cancel the last paragraph's marginBottom so bubble paddingTop/Bottom stay
+    // symmetric (paragraph margin owns multi-paragraph gaps only).
+    marginBottom: -theme.spacing[2],
   },
   imagePreviewContainer: {
     flexDirection: "row",
@@ -483,7 +483,7 @@ export const UserMessage = memo(function UserMessage({
       !resolvedDisableOuterSpacing && [
         isFirstInGroup ? userMessageStylesheet.containerFirstInGroup : null,
         isLastInGroup ? userMessageStylesheet.containerLastInGroup : null,
-        !isFirstInGroup || !isLastInGroup ? userMessageStylesheet.containerSpacing : null,
+        !isLastInGroup ? userMessageStylesheet.containerSpacing : null,
       ],
     ],
     [resolvedDisableOuterSpacing, isFirstInGroup, isLastInGroup],
@@ -511,11 +511,6 @@ export const UserMessage = memo(function UserMessage({
     ],
     [showTrailingRow],
   );
-  const bubbleStyle = useMemo(
-    () => [userMessageStylesheet.bubble, hasText ? userMessageStylesheet.bubbleWithText : null],
-    [hasText],
-  );
-
   return (
     <View style={containerStyle} testID="user-message">
       <View
@@ -523,7 +518,7 @@ export const UserMessage = memo(function UserMessage({
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
       >
-        <View style={bubbleStyle}>
+        <View style={userMessageStylesheet.bubble}>
           {hasImages ? (
             <View style={imagePreviewContainerStyle}>
               {images.map((image) => (
@@ -1258,11 +1253,12 @@ function colorWithAlpha(color: string, alpha: number): string {
 }
 
 const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
+  // Stream gapBelow owns between-item spacing — keep badge outer margins at 0.
   containerSpacing: {
-    marginBottom: 2,
+    marginBottom: 0,
   },
   containerLastInSequence: {
-    marginBottom: theme.spacing[3],
+    marginBottom: 0,
   },
   pressable: {
     minHeight: 34,
@@ -3456,7 +3452,7 @@ export const ToolCall = memo(function ToolCall({
         detail: effectiveDetail,
         errorText: presentation.errorText,
         icon: presentation.icon,
-        showLoadingSkeleton: presentation.isLoadingDetails,
+        showLoading: presentation.isLoadingDetails,
       });
     } else {
       setIsExpanded((prev) => !prev);
@@ -3520,7 +3516,7 @@ export const ToolCall = memo(function ToolCall({
         detail={effectiveDetail}
         errorText={presentation.errorText}
         maxHeight={maxDetailHeight}
-        showLoadingSkeleton={presentation.isLoadingDetails}
+        showLoading={presentation.isLoadingDetails}
         chrome={isThinking ? "flat" : "card"}
       />
     );

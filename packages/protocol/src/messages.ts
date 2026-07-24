@@ -154,8 +154,9 @@ export const MutableDaemonConfigSchema = z
       })
       .passthrough(),
     browserTools: MutableBrowserToolsConfigSchema.default({ enabled: false }),
-    dictation: MutableFeatureToggleSchema.default({ enabled: true }),
-    voiceMode: MutableFeatureToggleSchema.default({ enabled: true }),
+    // Opt-in: do not load speech models or show composer controls until enabled.
+    dictation: MutableFeatureToggleSchema.default({ enabled: false }),
+    voiceMode: MutableFeatureToggleSchema.default({ enabled: false }),
     providers: z.record(z.string(), MutableDaemonProviderConfigSchema).default({}),
     metadataGeneration: MutableMetadataGenerationConfigSchema.default({ providers: [] }),
     autoArchiveAfterMerge: z.boolean().default(false),
@@ -310,6 +311,8 @@ const AgentUsageSchema: z.ZodType<AgentUsage> = z.object({
   totalCostUsd: z.number().optional(),
   contextWindowMaxTokens: z.number().optional(),
   contextWindowUsedTokens: z.number().optional(),
+  // COMPAT(contextWindowEstimated): added in v0.2.0-beta.4, remove after 2027-01-24.
+  contextWindowEstimated: z.boolean().optional(),
 });
 
 const McpStdioServerConfigSchema = z.object({

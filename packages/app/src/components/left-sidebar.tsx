@@ -65,7 +65,7 @@ import {
   buildSettingsRoute,
 } from "@/utils/host-routes";
 import type { ShortcutKey } from "@/utils/format-shortcut";
-import { SidebarAgentListSkeleton } from "./sidebar-agent-list-skeleton";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { SidebarCalloutSlot } from "./sidebar-callout-slot";
 import { SidebarWorkspaceList } from "./sidebar-workspace-list";
 
@@ -698,7 +698,9 @@ function MobileSidebar({
         </WindowChromeSafeArea>
 
         {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
+          <View style={styles.listLoading} testID="sidebar-agent-list-loading">
+            <LoadingSpinner size="large" color={theme.colors.foregroundMuted} />
+          </View>
         ) : (
           <SidebarWorkspaceList
             collapsedProjectKeys={collapsedProjectKeys}
@@ -866,7 +868,9 @@ function DesktopSidebar({
         </View>
 
         {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
+          <View style={styles.listLoading} testID="sidebar-agent-list-loading">
+            <LoadingSpinner size="large" color={theme.colors.foregroundMuted} />
+          </View>
         ) : (
           <SidebarWorkspaceList
             collapsedProjectKeys={collapsedProjectKeys}
@@ -979,6 +983,12 @@ const staticStyles = RNStyleSheet.create({
 });
 
 const styles = StyleSheet.create((theme) => ({
+  listLoading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing[8],
+  },
   sidebarHeaderGroup: {
     paddingTop: theme.spacing[2],
     gap: 2,

@@ -47,6 +47,8 @@ export interface AppSettings {
   codeFontSize: number; // clamped px, default 12
   syntaxTheme: SyntaxThemeId; // default "one"
   workspaceTitleSource: WorkspaceTitleSource;
+  /** When false, sidebar project rows hide the leading avatar/icon. */
+  showSidebarProjectIcons: boolean;
   autoExpandReasoning: boolean;
   toolCallDetailLevel: ToolCallDetailLevel;
   vimKeybindings: boolean;
@@ -73,6 +75,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   codeFontSize: DEFAULT_CODE_FONT_SIZE,
   syntaxTheme: "one",
   workspaceTitleSource: "title",
+  showSidebarProjectIcons: true,
   autoExpandReasoning: false,
   toolCallDetailLevel: "detailed",
   vimKeybindings: false,
@@ -268,6 +271,9 @@ function pickAppearanceAppSettings(stored: StoredAppSettings): Partial<AppSettin
     VALID_WORKSPACE_TITLE_SOURCES.has(stored.workspaceTitleSource)
   ) {
     result.workspaceTitleSource = stored.workspaceTitleSource;
+  }
+  if (typeof stored.showSidebarProjectIcons === "boolean") {
+    result.showSidebarProjectIcons = stored.showSidebarProjectIcons;
   }
   if (typeof stored.autoExpandReasoning === "boolean") {
     result.autoExpandReasoning = stored.autoExpandReasoning;

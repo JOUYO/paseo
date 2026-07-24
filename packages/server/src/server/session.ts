@@ -1731,7 +1731,7 @@ export class Session {
       try {
         await this.dispatchInboundMessage(msg, source);
       } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
+        const err = error instanceof Error ? error : new Error(getErrorMessage(error));
         this.sessionLogger.error({ err }, "Error handling message");
 
         const requestId =
@@ -2935,7 +2935,7 @@ export class Session {
       this.handleAgentRunError(agentId, error, "Failed to send agent message");
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       };
     }
   }
@@ -3268,7 +3268,7 @@ export class Session {
         },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       this.sessionLogger.error({ err: error }, "Failed to import agent");
       this.emit({
         type: "status",
@@ -3747,7 +3747,7 @@ export class Session {
         payload: {
           directories: [],
           entries: [],
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
           requestId,
         },
       });
@@ -6011,7 +6011,7 @@ export class Session {
           hasOlder: false,
           hasNewer: false,
           entries: [],
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         },
       });
     }
@@ -6042,7 +6042,7 @@ export class Session {
           requestId: msg.requestId,
           parentAgentId: msg.parentAgentId,
           subagents: [],
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         },
       });
     }
@@ -6111,7 +6111,7 @@ export class Session {
           hasOlder: false,
           hasNewer: false,
           rows: [],
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         },
       });
     }
@@ -6167,7 +6167,7 @@ export class Session {
           itemCount: 0,
           boundaryCursor: msg.boundaryCursor ?? null,
           boundaryMessageId: msg.boundaryMessageId ?? null,
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
         },
       });
     }
@@ -6213,7 +6213,7 @@ export class Session {
           logger: this.sessionLogger,
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         this.handleAgentRunError(agentId, error, "Failed to send agent message");
         this.emit({
           type: "send_agent_message_response",

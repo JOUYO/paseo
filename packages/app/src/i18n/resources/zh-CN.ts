@@ -950,6 +950,9 @@ export const zhCN: TranslationResources = {
       branchSource: "分支名",
       groupByProject: "项目",
       groupByStatus: "状态",
+      projectIcons: "项目图标",
+      projectIconsShow: "显示",
+      projectIconsHide: "隐藏",
       status: {
         scriptsAvailable: "有可用 scripts",
         creating: "正在创建...",
@@ -1359,6 +1362,7 @@ export const zhCN: TranslationResources = {
     direct: {
       title: "直接连接",
       helper: "输入 Paseo server 的地址。",
+      helperSameOrigin: "已根据当前页面预填 Host。可连本机，也可改成外部地址后连接。",
       fields: {
         host: "Host",
         port: "端口",
@@ -1577,9 +1581,15 @@ export const zhCN: TranslationResources = {
   contextWindow: {
     title: "上下文窗口",
     used: "已使用 {{percentage}}%",
+    usedEstimated: "约已使用 {{percentage}}%",
     tokens: "{{used}} / {{max}} tokens",
     sessionCost: "会话费用 {{cost}}",
     accessibility: "上下文窗口已使用 {{percentage}}%",
+    accessibilityEstimated: "上下文窗口约已使用 {{percentage}}%",
+    estimateNotice: "根据本地会话数据估算",
+    usageUnavailable: "正在等待用量数据",
+    limit: "上下文上限 {{max}} tokens",
+    accessibilityUnavailable: "上下文窗口用量暂不可用",
   },
   review: {
     comment: {
@@ -1797,6 +1807,7 @@ export const zhCN: TranslationResources = {
           midnight: "午夜",
           claude: "Claude",
           ghostty: "Ghostty",
+          deepspace: "深空灰",
           auto: "跟随系统",
         },
       },

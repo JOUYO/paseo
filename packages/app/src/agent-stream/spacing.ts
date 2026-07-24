@@ -33,9 +33,11 @@ const isUserMessageItem = (item?: StreamItem | null) => item?.kind === "user_mes
 const isToolSequenceItem = (item?: StreamItem | null) =>
   item?.kind === "tool_call" || item?.kind === "thought" || item?.kind === "todo_list";
 
+// continuous / related / turn — see docs/design.md "Agent reply vertical rhythm".
+// Stream gapBelow is the single owner of between-item spacing for process rows.
 export const STREAM_ITEM_GAP = {
-  continuous: SPACING[1],
-  related: SPACING[2],
+  continuous: SPACING[2],
+  related: SPACING[3],
   turn: SPACING[4],
 } as const;
 
@@ -56,13 +58,13 @@ export function getGapBetweenStreamItems(
   if (item.kind === "user_message" && isToolSequenceItem(belowItem)) {
     return STREAM_ITEM_GAP.turn;
   }
-  // Keep reply-internal process rows and assistant prose on the same continuous
-  // rhythm so thinking → speak/assistant does not open a blank-line-sized gap.
+  // Process rows ↔ assistant prose use related so the conclusion does not glue
+  // to the last tool/thinking row, without opening a full turn-sized hole.
   if (item.kind === "assistant_message" && isToolSequenceItem(belowItem)) {
-    return STREAM_ITEM_GAP.continuous;
+    return STREAM_ITEM_GAP.related;
   }
   if (isToolSequenceItem(item) && belowItem.kind === "assistant_message") {
-    return STREAM_ITEM_GAP.continuous;
+    return STREAM_ITEM_GAP.related;
   }
   if (isSameAssistantBlockGroup({ item, other: belowItem })) {
     return STREAM_ITEM_GAP.continuous;

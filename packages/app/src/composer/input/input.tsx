@@ -202,10 +202,11 @@ function AttachButtonIcon({
   onAttachButtonRef: ((node: View | null) => void) | undefined;
   buttonIconSize: number;
 }) {
-  const colorMapping = hovered ? iconForegroundMapping : iconForegroundMutedMapping;
+  // Prefer themed variants over uniProps — lucide forwards unknown props to SVG <path> on web.
+  const Icon = hovered ? ThemedPlusForeground : ThemedPlusMuted;
   return (
     <View ref={onAttachButtonRef} collapsable={false} style={styles.attachButtonAnchor}>
-      <ThemedPlus size={buttonIconSize} uniProps={colorMapping} />
+      <Icon size={buttonIconSize} />
     </View>
   );
 }
@@ -402,11 +403,12 @@ function VoiceButtonIcon({
   if (isDictating) {
     return <Square size={buttonIconSize} color="white" fill="white" />;
   }
-  const colorMapping = hovered ? iconForegroundMapping : iconForegroundMutedMapping;
   if (isMutedRealtime) {
-    return <ThemedMicOff size={buttonIconSize} uniProps={colorMapping} />;
+    const Icon = hovered ? ThemedMicOffForeground : ThemedMicOffMuted;
+    return <Icon size={buttonIconSize} />;
   }
-  return <ThemedMic size={buttonIconSize} uniProps={colorMapping} />;
+  const Icon = hovered ? ThemedMicForeground : ThemedMicMuted;
+  return <Icon size={buttonIconSize} />;
 }
 
 type ShortcutChord = NonNullable<React.ComponentProps<typeof Shortcut>["chord"]>;
@@ -456,12 +458,12 @@ function SendButtonContent({
     return <View style={styles.stopIcon} />;
   }
   if (isSubmitLoading) {
-    return <ThemedActivityIndicator size="small" uniProps={iconAccentForegroundMapping} />;
+    return <ThemedActivityIndicatorAccent size="small" />;
   }
   if (submitIcon === "return") {
-    return <ThemedCornerDownLeft size={buttonIconSize} uniProps={iconAccentForegroundMapping} />;
+    return <ThemedCornerDownLeftAccent size={buttonIconSize} />;
   }
-  return <ThemedArrowUp size={buttonIconSize} uniProps={iconAccentForegroundMapping} />;
+  return <ThemedArrowUpAccent size={buttonIconSize} />;
 }
 
 function useWebComposerKeyDown(
@@ -2069,17 +2071,37 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
 })) as unknown as Record<string, object>;
 
-const ThemedPlus = withUnistyles(Plus);
-const ThemedMic = withUnistyles(Mic);
-const ThemedMicOff = withUnistyles(MicOff);
-const ThemedArrowUp = withUnistyles(ArrowUp);
-const ThemedCornerDownLeft = withUnistyles(CornerDownLeft);
-const ThemedActivityIndicator = withUnistyles(ActivityIndicator);
+// Prefer withUnistyles mappings over uniProps — lucide forwards unknown props to
+// SVG <path> on web, which logs React DOM warnings for `uniProps`.
+const ThemedPlusForeground = withUnistyles(Plus, (theme: Theme) => ({
+  color: theme.colors.foreground,
+}));
+const ThemedPlusMuted = withUnistyles(Plus, (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedMicForeground = withUnistyles(Mic, (theme: Theme) => ({
+  color: theme.colors.foreground,
+}));
+const ThemedMicMuted = withUnistyles(Mic, (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedMicOffForeground = withUnistyles(MicOff, (theme: Theme) => ({
+  color: theme.colors.foreground,
+}));
+const ThemedMicOffMuted = withUnistyles(MicOff, (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+const ThemedArrowUpAccent = withUnistyles(ArrowUp, (theme: Theme) => ({
+  color: theme.colors.accentForeground,
+}));
+const ThemedCornerDownLeftAccent = withUnistyles(CornerDownLeft, (theme: Theme) => ({
+  color: theme.colors.accentForeground,
+}));
+const ThemedActivityIndicatorAccent = withUnistyles(ActivityIndicator, (theme: Theme) => ({
+  color: theme.colors.accentForeground,
+}));
 const ThemedTextInput = withUnistyles(TextInput);
 
-const iconForegroundMapping = (theme: Theme) => ({ color: theme.colors.foreground });
-const iconForegroundMutedMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
-const iconAccentForegroundMapping = (theme: Theme) => ({ color: theme.colors.accentForeground });
 const textInputPlaceholderColorMapping = (theme: Theme) => ({
   placeholderTextColor: theme.colors.surface4,
 });

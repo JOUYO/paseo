@@ -971,6 +971,9 @@ export const ja: TranslationResources = {
       branchSource: "ブランチ名",
       groupByProject: "プロジェクト",
       groupByStatus: "ステータス",
+      projectIcons: "プロジェクトアイコン",
+      projectIconsShow: "表示",
+      projectIconsHide: "非表示",
       status: {
         scriptsAvailable: "スクリプトが利用可能",
         creating: "作成中...",
@@ -1390,6 +1393,8 @@ export const ja: TranslationResources = {
     direct: {
       title: "直接接続",
       helper: "Paseoサーバーのアドレスを入力してください。",
+      helperSameOrigin:
+        "Host はこのページから自動入力されます。このサーバーのまま使うか、別のアドレスに変更して接続できます。",
       fields: {
         host: "ホスト",
         port: "ポート",
@@ -1612,9 +1617,15 @@ export const ja: TranslationResources = {
   contextWindow: {
     title: "コンテキストウィンドウ",
     used: "{{percentage}}%使用",
+    usedEstimated: "{{percentage}}%使用",
     tokens: "{{used}} / {{max}}トークン",
     sessionCost: "セッションコスト: {{cost}}",
     accessibility: "コンテキストウィンドウ{{percentage}}%使用",
+    accessibilityEstimated: "コンテキストウィンドウ{{percentage}}%使用",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1833,6 +1844,8 @@ export const ja: TranslationResources = {
           midnight: "ミッドナイト",
           claude: "Claude",
           ghostty: "Ghostty",
+
+          deepspace: "Deep Space",
           auto: "システム",
         },
       },

@@ -156,13 +156,13 @@ describe("getGapBetweenStreamItems", () => {
     );
   });
 
-  it("uses the continuous rhythm between process rows and assistant prose", () => {
+  it("uses the related rhythm between process rows and assistant prose", () => {
     const assistant = assistantBlock({ id: "a", blockGroupId: "group-1", blockIndex: 0 });
     expect(getGapBetweenStreamItems(assistant, toolCallBlock("tool"))).toBe(
-      STREAM_ITEM_GAP.continuous,
+      STREAM_ITEM_GAP.related,
     );
     expect(getGapBetweenStreamItems(toolCallBlock("tool"), assistant)).toBe(
-      STREAM_ITEM_GAP.continuous,
+      STREAM_ITEM_GAP.related,
     );
   });
 

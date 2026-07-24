@@ -75,19 +75,19 @@ function computeRequiredLocalModelIds(params: {
 }): LocalSpeechModelId[] {
   const ids = new Set<LocalSpeechModelId>();
   if (
-    params.providers.dictationStt.enabled !== false &&
+    params.providers.dictationStt.enabled === true &&
     params.providers.dictationStt.provider === "local"
   ) {
     ids.add(params.models.dictationLocalSttModel);
   }
   if (
-    params.providers.voiceStt.enabled !== false &&
+    params.providers.voiceStt.enabled === true &&
     params.providers.voiceStt.provider === "local"
   ) {
     ids.add(params.models.voiceLocalSttModel);
   }
   if (
-    params.providers.voiceTts.enabled !== false &&
+    params.providers.voiceTts.enabled === true &&
     params.providers.voiceTts.provider === "local"
   ) {
     ids.add(params.models.voiceLocalTtsModel);
@@ -96,7 +96,7 @@ function computeRequiredLocalModelIds(params: {
 }
 
 function isLocalProviderEnabled(provider: { enabled?: boolean; provider: string }): boolean {
-  return provider.enabled !== false && provider.provider === "local";
+  return provider.enabled === true && provider.provider === "local";
 }
 
 function warnLocalConfigMissing(logger: Logger, feature: string): void {

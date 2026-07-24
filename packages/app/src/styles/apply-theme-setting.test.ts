@@ -19,6 +19,7 @@ describe("isAppThemeSetting", () => {
     expect(isAppThemeSetting("auto")).toBe(true);
     expect(isAppThemeSetting("dark")).toBe(true);
     expect(isAppThemeSetting("ghostty")).toBe(true);
+    expect(isAppThemeSetting("deepspace")).toBe(true);
     expect(isAppThemeSetting("nope")).toBe(false);
     expect(isAppThemeSetting(null)).toBe(false);
   });

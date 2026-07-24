@@ -991,6 +991,9 @@ export const es: TranslationResources = {
       branchSource: "Nombre de la rama",
       groupByProject: "Proyecto",
       groupByStatus: "Estado",
+      projectIcons: "Iconos de proyecto",
+      projectIconsShow: "Mostrar",
+      projectIconsHide: "Ocultar",
       status: {
         scriptsAvailable: "Guiones disponibles",
         creating: "Creando...",
@@ -1417,6 +1420,8 @@ export const es: TranslationResources = {
     direct: {
       title: "Conexión directa",
       helper: "Ingrese la dirección de un servidorPaseo.",
+      helperSameOrigin:
+        "Host se rellena desde esta página. Manténlo para este servidor o cámbialo para conectar a otro.",
       fields: {
         host: "Host",
         port: "Puerto",
@@ -1639,9 +1644,15 @@ export const es: TranslationResources = {
   contextWindow: {
     title: "ventana contextual",
     used: "{{percentage}}% utilizado",
+    usedEstimated: "{{percentage}}% utilizado",
     tokens: "Fichas{{used}}/{{max}}",
     sessionCost: "Costo de la sesión{{cost}}",
     accessibility: "Ventana de contexto{{percentage}}% utilizada",
+    accessibilityEstimated: "Ventana de contexto{{percentage}}% utilizada",
+    estimateNotice: "Estimated from local session data",
+    usageUnavailable: "Waiting for usage data",
+    limit: "Context limit {{max}} tokens",
+    accessibilityUnavailable: "Context window usage is not available yet",
   },
   review: {
     comment: {
@@ -1868,6 +1879,8 @@ export const es: TranslationResources = {
           midnight: "Medianoche",
           claude: "claudio",
           ghostty: "fantasmal",
+
+          deepspace: "Espacio profundo",
           auto: "Sistema",
         },
       },

@@ -160,6 +160,11 @@ This applies broadly to non-`style` props that carry theme-dependent values, suc
 
 ## Fix Patterns
 
+`AdaptiveModalSheet` has a related Gorhom trap: putting horizontal padding on
+`BottomSheetScrollView`'s `contentContainerStyle` can lose the inset when the
+sheet measures. Keep body padding on an inner `View` (`styles.bottomSheetContent`)
+and leave the scroll content container for flex/safe-area bottom only.
+
 Preferred pattern: put themed backgrounds on a normal wrapper view, and keep `contentContainerStyle` theme-free.
 
 ```tsx
@@ -182,6 +187,58 @@ const styles = StyleSheet.create((theme) => ({
 This is the pattern used by the settings screen: the screen background lives on a normal `View style={styles.container}`, while the scroll content container only carries layout.
 
 In practice the wrapper-`View` pattern is the one we use. Across the app, `withUnistyles` is now reserved for wrapping leaf components — mostly lucide icons (`ThemedActivityIndicator`, `ThemedChevronDown`, …) and small third-party components like `MarkdownWithStableRenderer` — so they pick up theme-reactive `color`/`tintColor` props without re-rendering their parent.
+
+### Lucide icons: map color in `withUnistyles`, never via `uniProps`
+
+On web, lucide-react-native forwards unknown props onto SVG `<path>`. Passing `uniProps={…}` therefore logs:
+
+`React does not recognize the uniProps prop on a DOM element`.
+
+Bake the theme color into the wrapper instead, and swap variants when hover needs a different color:
+
+```tsx
+const ThemedPlusForeground = withUnistyles(Plus, (theme: Theme) => ({
+  color: theme.colors.foreground,
+}));
+const ThemedPlusMuted = withUnistyles(Plus, (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+}));
+
+const Icon = hovered ? ThemedPlusForeground : ThemedPlusMuted;
+<Icon size={16} />;
+```
+
+`uniProps` remains fine for React Native primitives that Unistyles understands (e.g. `TextInput` `placeholderTextColor`) — just not for lucide SVG leaves.
+
+**Root cause + the patch.** Upstream `withUnistyles` (v3.2.4) spreads the raw incoming
+`props` — including the `uniProps` mapping function itself — onto the wrapped component. RN
+primitives on web drop unknown props via `createDOMProps`, so `View`/`Text`/`TextInput` never
+warned; but lucide icons forward `...rest` straight to the SVG element, so `uniProps` leaked
+onto `<path>` and React warned on every icon that used the runtime `uniProps={…}` form. We
+patch `withUnistyles` (see `patches/react-native-unistyles+3.2.4.patch`) to strip `uniProps`
+before forwarding, which kills the warning app-wide regardless of call-site style. The
+"bake color into the wrapper" guidance above is still the preferred pattern; the patch just
+means an occasional leftover `uniProps={…}` no longer spams the console.
+
+### Sibling patch: `props.pointerEvents is deprecated` (react-native-web)
+
+Same class of dev-only web console noise, same remedy. react-native-web deprecated the
+`pointerEvents` prop in favor of `style.pointerEvents`, but its `createDOMProps` still folds
+`props.pointerEvents` into the resolved style — the prop is fully supported; only a `warnOnce`
+fires. Because `warnOnce` dedupes by key, it fires **once per session for the entire app**,
+including third-party callers (`@gorhom/*`, react-navigation, reanimated) we can't edit, so it
+can never be silenced by fixing our own call sites. `patches/react-native-web+0.21.2.patch`
+drops that single `warnOnce` (behavior unchanged).
+
+**Do not mechanically rewrite `pointerEvents={…}` props into `style.pointerEvents` to chase the
+warning** — the patch already removed it, and the rewrite is a trap. `createDOMProps` resolves
+the `pointerEvents` **prop** through a dedicated `pointerEventsStyles` map that understands the
+React Native values `auto` / `none` / `box-none` / `box-only`. Plain CSS `pointer-events` does
+**not** understand `box-none` / `box-only`. Moving those onto a full-screen overlay's `style`
+(e.g. the `@gorhom` bottom-sheet hosting container that wraps the whole app, or
+`FloatingPanelPortalHost`) makes the value resolve to `auto`, so the invisible overlay starts
+eating every click app-wide. Keep `pointerEvents` as a **prop** on views that rely on
+`box-none` / `box-only`; the RNW patch keeps the console quiet.
 
 In principle, [`withUnistyles`](https://www.unistyl.es/v3/references/with-unistyles) can also wrap a `ScrollView` to make `contentContainerStyle` theme-reactive via its [auto-mapping behavior for `style` and `contentContainerStyle`](https://www.unistyl.es/v3/references/with-unistyles#auto-mapping-for-style-and-contentcontainerstyle-props). We previously did this on the welcome screen and hit the `> *` child-selector leak documented below; we have since moved the welcome screen to the wrapper-`View` pattern. If you find yourself reaching for `withUnistyles(ScrollView)`, treat it as a smell and check whether a wrapper view works first.
 

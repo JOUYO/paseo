@@ -143,7 +143,9 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.spacing[4],
   },
   containerCompact: {
-    gap: theme.spacing[3],
+    // Tighter than the settings card so the context-meter tooltip keeps one
+    // vertical rhythm with the context section above the divider.
+    gap: theme.spacing[2],
   },
   header: {
     flexDirection: "row",

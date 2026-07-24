@@ -30,12 +30,12 @@ describe("getVoiceFeaturesCardState", () => {
     );
   });
 
-  it("defaults both features on when config is null", () => {
+  it("defaults both features off when config is null", () => {
     expect(getVoiceFeaturesCardState({ isConnected: true, config: null })).toEqual({
       isVisible: true,
       rows: [
-        { id: "dictation", isEnabled: true },
-        { id: "voiceMode", isEnabled: true },
+        { id: "dictation", isEnabled: false },
+        { id: "voiceMode", isEnabled: false },
       ],
     });
   });
