@@ -734,6 +734,11 @@ export interface AgentClient {
    */
   unarchiveNativeSession?(handle: AgentPersistenceHandle): Promise<void>;
   /**
+   * Permanently delete a durable native session (best-effort).
+   * Called when Paseo hard-deletes an agent so the provider's own history also goes away.
+   */
+  deleteNativeSession?(handle: AgentPersistenceHandle): Promise<void>;
+  /**
    * Release any provider-owned resources held by this client (background
    * processes, sockets, cached subprocesses, etc.). Called when the daemon
    * shuts down. Must be idempotent.

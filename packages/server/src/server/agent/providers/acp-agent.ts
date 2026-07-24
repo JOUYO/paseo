@@ -95,6 +95,10 @@ import {
 } from "../agent-sdk-types.js";
 import { importSessionFromPersistence } from "../provider-session-import.js";
 import {
+  ACP_SESSION_DELETE_METHOD,
+  hasAcpSessionDeleteCapability,
+} from "./acp-delete-native-session.js";
+import {
   checkProviderLaunchAvailable,
   createProviderEnvSpec,
   resolveProviderLaunch,
@@ -1052,6 +1056,47 @@ export class ACPAgentClient implements AgentClient {
         : response.configOptions;
     } catch {
       return configOptions;
+    }
+  }
+
+  /**
+   * Permanently remove a durable ACP session (best-effort).
+   *
+   * 1. Provider-specific local cleanup (`deleteLocalNativeSession`) — e.g. Cursor /
+   *    Grok on-disk session dirs when the agent does not yet implement protocol delete.
+   * 2. Capability-gated `session/delete` against a short-lived ACP probe process.
+   *
+   * COMPAT(acpSessionDelete): SDK 0.17.1 has no typed `deleteSession`; we send the
+   * stabilized RPC via `extMethod`. Switch to `connection.deleteSession` when the
+   * dependency floor is `@agentclientprotocol/sdk` >= 1.2. Remove by 2026-12-25.
+   */
+  async deleteNativeSession(handle: AgentPersistenceHandle): Promise<void> {
+    await this.deleteLocalNativeSession(handle);
+    await this.deleteNativeSessionViaProtocol(handle);
+  }
+
+  /**
+   * Filesystem (or other non-protocol) cleanup for providers with a known local
+   * session layout. Default is a no-op; Cursor/Grok override this.
+   */
+  protected async deleteLocalNativeSession(_handle: AgentPersistenceHandle): Promise<void> {}
+
+  private async deleteNativeSessionViaProtocol(handle: AgentPersistenceHandle): Promise<void> {
+    const sessionId = handle.nativeHandle ?? handle.sessionId;
+    if (!sessionId) {
+      return;
+    }
+
+    const probe = await this.spawnProcess(PROBE_ENV);
+    try {
+      if (!hasAcpSessionDeleteCapability(probe.initialize)) {
+        return;
+      }
+      await this.runACPRequest(() =>
+        probe.connection.extMethod(ACP_SESSION_DELETE_METHOD, { sessionId }),
+      );
+    } finally {
+      await this.closeProbe(probe);
     }
   }
 

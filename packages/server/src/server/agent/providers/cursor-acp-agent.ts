@@ -1,11 +1,12 @@
 import type { Logger } from "pino";
 
-import type { ProviderCatalog } from "../agent-sdk-types.js";
+import type { AgentPersistenceHandle, ProviderCatalog } from "../agent-sdk-types.js";
 import type { ACPConfigFeatureOption } from "./acp-agent.js";
 import {
   createCursorContextUsageResolver,
   transformCursorModelDefinition,
 } from "./cursor-context-usage.js";
+import { deleteCursorNativeSession } from "./cursor-delete-native-session.js";
 import { GenericACPAgentClient } from "./generic-acp-agent.js";
 
 interface CursorACPAgentClientOptions {
@@ -66,6 +67,12 @@ export class CursorACPAgentClient extends GenericACPAgentClient {
       }),
     });
     this.contextWindowMaxTokensByModel = contextWindowMaxTokensByModel;
+  }
+
+  protected override async deleteLocalNativeSession(handle: AgentPersistenceHandle): Promise<void> {
+    await deleteCursorNativeSession({
+      sessionId: handle.nativeHandle ?? handle.sessionId,
+    });
   }
 
   override async fetchCatalog(

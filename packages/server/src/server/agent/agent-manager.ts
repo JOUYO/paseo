@@ -4314,6 +4314,23 @@ export class AgentManager {
     }
   }
 
+  async deleteNativeSessionBestEffort(
+    provider: AgentProvider,
+    persistence: AgentPersistenceHandle | null | undefined,
+  ): Promise<void> {
+    if (!persistence) return;
+    const client = this.clients.get(provider);
+    if (!client?.deleteNativeSession) return;
+    try {
+      await client.deleteNativeSession(persistence);
+    } catch (error) {
+      this.logger.warn(
+        { error, provider, sessionId: persistence.sessionId },
+        "Failed to delete native session (best-effort)",
+      );
+    }
+  }
+
   private async unarchiveNativeSession(
     provider: AgentProvider,
     persistence: AgentPersistenceHandle | null | undefined,

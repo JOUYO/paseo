@@ -1503,6 +1503,31 @@ export class OpenCodeAgentClient implements AgentClient {
     await this.setNativeSessionArchived(handle, null);
   }
 
+  async deleteNativeSession(handle: AgentPersistenceHandle): Promise<void> {
+    const metadata = (handle.metadata ?? {}) as Partial<AgentSessionConfig>;
+    if (!metadata.cwd) return;
+
+    const registeredServerUrl = getOpenCodeChildSessionServerUrl(handle.sessionId);
+    const acquisition =
+      (registeredServerUrl ? this.serverManager.acquireExisting(registeredServerUrl) : null) ??
+      (await this.serverManager.acquireCurrent());
+    const client = this.createOpenCodeClient({
+      baseUrl: acquisition.server.url,
+      directory: metadata.cwd,
+    });
+    try {
+      const response = await client.session.delete({
+        sessionID: handle.sessionId,
+        directory: metadata.cwd,
+      });
+      if (response.error) {
+        throw new Error(`OpenCode session.delete failed: ${JSON.stringify(response.error)}`);
+      }
+    } finally {
+      await acquisition.release();
+    }
+  }
+
   private async setNativeSessionArchived(
     handle: AgentPersistenceHandle,
     archivedAt: number | null,

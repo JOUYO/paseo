@@ -3,12 +3,14 @@ import type { Logger } from "pino";
 import type {
   AgentMode,
   AgentModelDefinition,
+  AgentPersistenceHandle,
   AgentSelectOption,
   AgentSessionConfig,
 } from "../agent-sdk-types.js";
 import type { AvailableACPModel } from "./acp-agent.js";
 import { GenericACPAgentClient } from "./generic-acp-agent.js";
 import { createGrokContextUsageResolver, resolveGrokHome } from "./grok-context-usage.js";
+import { deleteGrokNativeSession } from "./grok-delete-native-session.js";
 import { normalizeGrokUserMessageText, transformGrokToolSnapshot } from "./grok-message-tags.js";
 
 const GROK_CONTEXT_WINDOW_FALLBACKS: Record<string, number> = {
@@ -123,7 +125,10 @@ export function buildGrokSessionLaunchArgs(config: AgentSessionConfig): string[]
 }
 
 export class GrokACPAgentClient extends GenericACPAgentClient {
+  private readonly grokHome: string;
+
   constructor(options: GrokACPAgentClientOptions) {
+    const grokHome = resolveGrokHome(options.env);
     super({
       ...options,
       defaultModes: GROK_MODES,
@@ -137,9 +142,19 @@ export class GrokACPAgentClient extends GenericACPAgentClient {
         model: true,
         thinkingOption: true,
       },
-      persistenceMetadata: () => ({ grokHome: resolveGrokHome(options.env) }),
+      persistenceMetadata: () => ({ grokHome }),
       userMessageTextTransformer: normalizeGrokUserMessageText,
       toolSnapshotTransformer: transformGrokToolSnapshot,
+    });
+    this.grokHome = grokHome;
+  }
+
+  protected override async deleteLocalNativeSession(handle: AgentPersistenceHandle): Promise<void> {
+    const metadata = (handle.metadata ?? {}) as { cwd?: string; grokHome?: string };
+    await deleteGrokNativeSession({
+      grokHome: typeof metadata.grokHome === "string" ? metadata.grokHome : this.grokHome,
+      cwd: metadata.cwd,
+      sessionId: handle.sessionId,
     });
   }
 }

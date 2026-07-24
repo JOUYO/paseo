@@ -6575,6 +6575,15 @@ export class CodexAppServerAgentClient implements AgentClient {
     }
   }
 
+  async deleteNativeSession(handle: AgentPersistenceHandle): Promise<void> {
+    const sessionId = handle.nativeHandle ?? handle.sessionId;
+    if (!sessionId) return;
+    const rolloutFile = await resolveCodexRolloutFile(resolveCodexHomeDir(), sessionId);
+    if (rolloutFile) {
+      await fs.rm(rolloutFile, { force: true });
+    }
+  }
+
   async unarchiveNativeSession(handle: AgentPersistenceHandle): Promise<void> {
     const threadId = handle.nativeHandle ?? handle.sessionId;
     if (!threadId) return;
