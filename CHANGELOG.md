@@ -1,11 +1,21 @@
 # Changelog
 
-## 0.2.0-beta.4 - 2026-07-23
+## 0.2.0-beta.5 - 2026-07-24
+
+### Added
+
+- Use Grok as an ACP coding agent
+- See Grok usage and context in the provider card
+- Toggle voice features in Settings
+- Choose Enter or Shift+Enter to send messages
+- Apply the saved theme before first paint to avoid a light flash on web
 
 ### Improved
 
 - Improved model selection on mobile ([#2361](https://github.com/getpaseo/paseo/pull/2361))
 - Selector popovers stay readable on iPad ([#2360](https://github.com/getpaseo/paseo/pull/2360) by [@yzim](https://github.com/yzim))
+- Chat message spacing is more consistent
+- The scroll-to-bottom button stays above the composer
 
 ### Fixed
 
@@ -17,6 +27,8 @@
 - Oh My Pi custom messages marked hidden stay hidden in live and restored chats ([#2280](https://github.com/getpaseo/paseo/pull/2280) by [@isac322](https://github.com/isac322))
 - Web chats stay pinned to the latest message at non-default browser zoom ([#2368](https://github.com/getpaseo/paseo/pull/2368))
 - Grouped tool-call loading animations display correctly ([#2369](https://github.com/getpaseo/paseo/pull/2369))
+- Stopping a turn uses the same control as send
+- Grok usage updates more reliably when the host is slow
 
 ## 0.2.0-beta.3 - 2026-07-22
 
