@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -42,11 +43,17 @@ const CursorAuthStatusSchema = z.object({
   accessToken: z.string().optional(),
 });
 
+const CursorAuthJsonSchema = z.object({
+  accessToken: z.string().min(1),
+});
+
 type CursorUsageResponse = z.infer<typeof CursorUsageResponseSchema>;
 
 interface CursorQuotaProviderOptions {
   logger: Logger;
   fetch?: ProviderApiFetch;
+  /** Test seam for token discovery. */
+  resolveAccessToken?: () => Promise<string | null>;
 }
 
 function parseCursorBillingCycleTimestamp(
@@ -107,23 +114,45 @@ async function readCursorTokenFromSqlite(): Promise<string | null> {
   return null;
 }
 
+/** Cursor Agent CLI stores session tokens at `~/.config/cursor/auth.json`. */
+export async function readCursorTokenFromAuthJson(
+  home: string = homedir(),
+): Promise<string | null> {
+  const path = join(home, ".config", "cursor", "auth.json");
+  if (!existsSync(path)) return null;
+  try {
+    const parsed = CursorAuthJsonSchema.parse(JSON.parse(await readFile(path, "utf8")));
+    return parsed.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+export async function resolveCursorAccessToken(): Promise<string | null> {
+  return (
+    process.env["CURSOR_ACCESS_TOKEN"] ||
+    process.env["CURSOR_TOKEN"] ||
+    (await readCursorTokenFromSqlite()) ||
+    (await readCursorTokenFromAuthJson())
+  );
+}
+
 export class CursorQuotaProvider implements ProviderUsageFetcher {
   readonly providerId = "cursor";
   readonly displayName = "Cursor";
 
   private readonly logger: Logger;
   private readonly fetchApi: ProviderApiFetch;
+  private readonly resolveAccessToken: () => Promise<string | null>;
 
   constructor(options: CursorQuotaProviderOptions) {
     this.logger = options.logger;
     this.fetchApi = options.fetch ?? fetch;
+    this.resolveAccessToken = options.resolveAccessToken ?? resolveCursorAccessToken;
   }
 
   async fetchUsage(): Promise<ProviderUsage> {
-    const token =
-      process.env["CURSOR_ACCESS_TOKEN"] ||
-      process.env["CURSOR_TOKEN"] ||
-      (await readCursorTokenFromSqlite());
+    const token = await this.resolveAccessToken();
 
     if (!token) return unavailableUsage(this);
 

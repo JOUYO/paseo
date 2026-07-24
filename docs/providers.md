@@ -91,6 +91,8 @@ Keep the protocol shape provider-agnostic. Do not add provider-specific renderer
 
 Kimi Code usage follows the CLI-managed credential file at `KIMI_CODE_HOME` or `~/.kimi-code/credentials/kimi-code.json`; do not probe the legacy `~/.kimi` path as the primary source for current Kimi Code installs.
 
+Cursor plan usage resolves an access token from, in order: `CURSOR_ACCESS_TOKEN` / `CURSOR_TOKEN`, the desktop app's `state.vscdb` (`cursorAuthStatus`), then the Cursor Agent CLI session file at `~/.config/cursor/auth.json`. Headless hosts that only have `cursor-agent` logged in need that CLI auth file (or an env token); without it the fetcher returns `unavailable` and the usage UI hides Cursor.
+
 ## Context-window meter
 
 The context-window meter is separate from plan usage. It reads `AgentUsage.contextWindowMaxTokens` / `contextWindowUsedTokens`, which flow from `usage_updated` / `turn_completed` stream events into the agent's `lastUsage` (persisted to the stored record so reopened agents show their last-known ring). Each provider sources these fields differently:
